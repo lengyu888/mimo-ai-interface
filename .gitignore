@@ -1,0 +1,26 @@
+# Python virtual environment
+venv/
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Uploads
+uploads/
+
+# Data (optional - uncomment if you want to exclude chat data)
+# data/
+
+# IDE
+.vscode/
+.idea/
+*.iml
