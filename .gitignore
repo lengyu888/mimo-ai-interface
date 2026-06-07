@@ -24,3 +24,7 @@ uploads/
 .vscode/
 .idea/
 *.iml
+
+# Local Codex/Superpowers working artifacts
+.worktrees/
+.superpowers/
