@@ -3363,6 +3363,7 @@ function updateAlarmState(id, state) {
   renderEvidence({ type: 'alarm', id });
   updateOperationalCounts();
   updateStats();
+  publishPetrochemicalSnapshot();
 }
 
 function focusAlarmOnMap(alarmItem) {
@@ -3420,6 +3421,7 @@ function selectWorkbenchContext(type, id, name) {
   document.querySelectorAll('.zone.workbench-focus').forEach(zone => zone.classList.remove('workbench-focus'));
   if (type === 'zone') document.getElementById(`zone${id}`)?.classList.add('workbench-focus');
   renderEvidence(activeWorkbenchContext);
+  sendUpdate('selectedContext', activeWorkbenchContext);
 }
 
 function updateOperationalCounts() {
@@ -3730,8 +3732,9 @@ function askAI(type) {
 
 function switchToMimo() {
   console.log('Switching to Mimo AI system...');
+  const context = encodeURIComponent(JSON.stringify(activeWorkbenchContext));
   try {
-    window.location.href = 'index.html';
+    window.location.href = `index.html?context=petrochemical&selectedContext=${context}`;
   } catch (e) {
     console.error('Error switching to Mimo:', e);
     // 备用方案
@@ -3741,8 +3744,9 @@ function switchToMimo() {
 
 function switchToMimoWithQuery() {
   console.log('Switching to Mimo AI system with query...');
+  const context = encodeURIComponent(JSON.stringify(activeWorkbenchContext));
   try {
-    window.location.href = 'index.html?context=petrochemical';
+    window.location.href = `index.html?context=petrochemical&selectedContext=${context}`;
   } catch (e) {
     console.error('Error switching to Mimo:', e);
     window.location.replace('index.html?context=petrochemical');
@@ -3777,6 +3781,7 @@ function connectWebSocket() {
     
     // 加入石化系统房间
     socket.emit('join', { room: 'petrochemical_room' });
+    publishPetrochemicalSnapshot();
     
     // 更新连接状态
     updateConnectionStatus(true);
@@ -4161,15 +4166,52 @@ function sendUpdate(type, data) {
   }
 }
 
+function publishPetrochemicalSnapshot() {
+  if (!socket || !isConnected) return;
+  [
+    ['personnel', personnelData],
+    ['equipment', equipmentData],
+    ['sensors', sensorsData],
+    ['alerts', alertsData],
+    ['selectedContext', activeWorkbenchContext],
+  ].forEach(([type, data]) => sendUpdate(type, data));
+}
+
+function reportCommandResult(command, status, message = '') {
+  if (!socket || !isConnected) return;
+  socket.emit('command_result', {
+    commandId: command.commandId,
+    command: command.command,
+    status,
+    message,
+    selectedContext: activeWorkbenchContext,
+    timestamp: Date.now() / 1000
+  });
+}
+
 function executeAICommand(command) {
   console.log('Executing AI command:', command);
   
   const cmd = command.command;
   const params = command.params || {};
   
+  let executed = true;
   switch(cmd) {
+    case 'focus_zone':
     case 'highlight_zone':
       highlightZone(params.zoneId);
+      break;
+    case 'acknowledge_alarm':
+      updateAlarmState(params.alarmId, 'acknowledged');
+      break;
+    case 'dispatch_alarm':
+      updateAlarmState(params.alarmId, 'dispatched');
+      break;
+    case 'escalate_alarm':
+      updateAlarmState(params.alarmId, 'escalated');
+      break;
+    case 'resolve_alarm':
+      updateAlarmState(params.alarmId, 'resolved');
       break;
     case 'highlight_person':
       highlightPerson(params.personId);
@@ -4188,7 +4230,9 @@ function executeAICommand(command) {
       break;
     default:
       console.log('Unknown command:', cmd);
+      executed = false;
   }
+  reportCommandResult(command, executed ? 'executed' : 'failed', executed ? 'Command applied' : 'Unknown command');
 }
 
 function highlightZone(zoneId) {
@@ -4244,6 +4288,7 @@ function increaseSensorSampling(sensorId) {
 
 function displayAIAnalysis(analysis) {
   console.log('Displaying AI analysis:', analysis);
+  displayAIRecommendation(analysis);
   
   // 创建分析结果面板
   const analysisDiv = document.createElement('div');
@@ -4266,6 +4311,18 @@ function displayAIAnalysis(analysis) {
       analysisDiv.remove();
     }
   }, 5000);
+}
+
+function displayAIRecommendation(analysis) {
+  const alarmItem = activeWorkbenchContext.type === 'alarm'
+    ? alertsData.find(item => item.id === activeWorkbenchContext.id)
+    : null;
+  if (alarmItem) {
+    alarmItem.aiRecommendation = analysis.summary || analysis.suggestions?.[0] || 'AI 分析已回写';
+    alarmItem.steps = [...(alarmItem.steps || []), `AI 建议：${alarmItem.aiRecommendation}`];
+    renderAlarmDetail(alarmItem);
+  }
+  renderEvidence(activeWorkbenchContext);
 }
 
 function sendToAI(data) {

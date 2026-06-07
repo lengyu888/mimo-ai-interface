@@ -2349,6 +2349,7 @@
       <div id="petro-insight-content" style="padding:16px;">
         <div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;">等待石化系统数据中...</div>
       </div>
+      <div id="petro-integration-timeline" style="padding:0 16px 12px;"></div>
       <div style="padding:12px 16px;border-top:1px solid rgba(124,58,237,0.2);display:flex;gap:8px;">
         <button onclick="window.location.href='petrochemical.html'" style="flex:1;padding:10px 16px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:10px;color:white;font-weight:600;font-size:12px;cursor:pointer;">返回优化</button>
         <button onclick="insertPrompt('基于当前石化系统数据，请给出全面优化建议')" style="flex:1;padding:10px 16px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);border-radius:10px;color:#a78bfa;font-weight:600;font-size:12px;cursor:pointer;">深入分析</button>
@@ -3688,6 +3689,52 @@ let aiSocket = null;
 let petrochemicalData = null;
 let pendingAlerts = [];
 let integrationEnabled = false;
+let integrationTimeline = [];
+
+function applyPetrochemicalSnapshot(snapshot) {
+  if (!snapshot) return;
+  petrochemicalData = {
+    personnel: snapshot.personnel || [],
+    equipment: snapshot.equipment || [],
+    sensors: snapshot.sensors || [],
+    alerts: snapshot.alerts || [],
+    selectedContext: snapshot.selectedContext || null,
+    lastUpdate: snapshot.lastUpdate || null,
+    sourceOnline: Boolean(snapshot.sourceOnline)
+  };
+  renderPetrochemicalConnectionState();
+  showPetroPanel(petrochemicalData);
+}
+
+function mergePetrochemicalUpdate(update) {
+  if (!update || !update.type) return;
+  if (!petrochemicalData) applyPetrochemicalSnapshot({});
+  petrochemicalData[update.type] = update.data;
+  petrochemicalData.lastUpdate = Date.now() / 1000;
+  renderPetrochemicalConnectionState();
+  showPetroPanel(petrochemicalData);
+}
+
+function renderPetrochemicalConnectionState() {
+  const button = document.getElementById('petro-switch-btn');
+  if (!button) return;
+  const online = integrationEnabled && petrochemicalData?.sourceOnline;
+  const stale = petrochemicalData?.lastUpdate && (Date.now() / 1000 - petrochemicalData.lastUpdate > 30);
+  button.title = online ? (stale ? '石化数据已连接，但数据超过 30 秒未更新' : '石化系统实时数据已连接') : '已连接服务端，等待石化数据源';
+  button.style.boxShadow = online && !stale ? '0 0 0 1px rgba(34,197,94,.45)' : '';
+}
+
+function renderIntegrationTimeline(timeline) {
+  integrationTimeline = timeline || [];
+  const container = document.getElementById('petro-integration-timeline');
+  if (!container) return;
+  container.innerHTML = integrationTimeline.slice(0, 4).map(item => `
+    <div style="display:flex;gap:8px;padding:6px 0;border-top:1px solid rgba(148,163,184,.12);font-size:10px;color:#94a3b8;">
+      <span style="color:#a78bfa;">${item.type}</span>
+      <span>${new Date(item.timestamp * 1000).toLocaleTimeString('zh-CN', { hour12:false })}</span>
+    </div>
+  `).join('');
+}
 
 function connectToPetrochemical() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -3712,8 +3759,20 @@ function connectToPetrochemical() {
 
   aiSocket.on('petrochemical_update', (data) => {
     console.log('Received petrochemical update:', data);
-    petrochemicalData = data;
-    updatePetrochemicalPanel(data);
+    mergePetrochemicalUpdate(data);
+  });
+
+  aiSocket.on('joined', (data) => {
+    if (data.room === 'ai_room') queryPetrochemicalData('all');
+  });
+
+  aiSocket.on('petrochemical_state', (state) => {
+    console.log('Received complete petrochemical state:', state);
+    applyPetrochemicalSnapshot(state);
+  });
+
+  aiSocket.on('integration_timeline', (timeline) => {
+    renderIntegrationTimeline(timeline);
   });
 
   aiSocket.on('new_alert', (alert) => {
@@ -3729,6 +3788,16 @@ function connectToPetrochemical() {
 
   aiSocket.on('ai_query_response', (response) => {
     console.log('AI query response:', response);
+    if (response.query_type === 'all') {
+      applyPetrochemicalSnapshot(response.data);
+    } else if (response.query_type && petrochemicalData) {
+      applyPetrochemicalSnapshot({ ...petrochemicalData, [response.query_type]: response.data });
+    }
+  });
+
+  aiSocket.on('command_result', (result) => {
+    console.log('Petrochemical command result:', result);
+    queryPetrochemicalData('all');
   });
 }
 
@@ -3736,6 +3805,7 @@ function showIntegrationStatus(connected) {
   integrationEnabled = connected;
   const statusText = connected ? '石化系统已连接' : '石化系统未连接';
   console.log('Integration status:', statusText);
+  renderPetrochemicalConnectionState();
 }
 
 function updatePetrochemicalPanel(data) {
@@ -3761,6 +3831,11 @@ function showPetroPanel(data) {
   alertDot.style.display = 'inline-block';
   
   let html = '';
+  const freshness = data.lastUpdate ? Math.max(0, Math.round(Date.now() / 1000 - data.lastUpdate)) : null;
+  html += `<div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:10px;color:#94a3b8;">
+    <span>${data.sourceOnline ? '数据源在线' : '显示最近快照'}</span>
+    <span>${freshness === null ? '暂无更新时间' : freshness + ' 秒前更新'}</span>
+  </div>`;
   
   // 传感器数据
   if (data.sensors && data.sensors.length > 0) {
@@ -3797,6 +3872,13 @@ function showPetroPanel(data) {
             <div style="padding:8px 10px;background:${a.level === 'danger' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'} ;border:1px solid ${a.level === 'danger' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'} ;border-radius:8px;">
               <div style="font-size:11px;font-weight:600;color:${a.level === 'danger' ? '#fca5a5' : '#fde047'};">${a.title}</div>
               <div style="font-size:10px;color:#94a3b8;margin-top:2px;">${a.desc}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;">
+                <button onclick="sendPetrochemicalAction('focus_zone','${a.id}',${a.zoneId || 1})" style="font-size:9px;padding:4px 6px;">聚焦</button>
+                <button onclick="sendPetrochemicalAction('acknowledge_alarm','${a.id}')" style="font-size:9px;padding:4px 6px;">确认</button>
+                <button onclick="sendPetrochemicalAction('dispatch_alarm','${a.id}')" style="font-size:9px;padding:4px 6px;">派遣</button>
+                <button onclick="sendPetrochemicalAction('escalate_alarm','${a.id}')" style="font-size:9px;padding:4px 6px;">升级</button>
+                <button onclick="sendPetrochemicalAction('resolve_alarm','${a.id}')" style="font-size:9px;padding:4px 6px;">解除</button>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -3892,6 +3974,21 @@ function sendAICommand(command, params = {}) {
   }
 }
 
+function sendPetrochemicalAction(command, alarmId, zoneId = null) {
+  sendAICommand(command, { alarmId, zoneId });
+}
+
+function sendCurrentAnalysisToPetrochemical(summary) {
+  sendAIAnalysisToPetrochemical({
+    type: 'alarm_analysis',
+    analysisMode: true,
+    context: petrochemicalData?.selectedContext || null,
+    summary,
+    suggestions: [summary],
+    timestamp: Date.now() / 1000
+  });
+}
+
 // =====================================
 // 初始化石化系统连接
 // =====================================
@@ -3900,9 +3997,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const context = urlParams.get('context');
   const query = urlParams.get('query');
+  const selectedContext = urlParams.get('selectedContext');
 
   if (context === 'petrochemical') {
     console.log('[Petrochemical] Received context from petrochemical system');
+    if (selectedContext) {
+      try {
+        const parsedContext = JSON.parse(decodeURIComponent(selectedContext));
+        petrochemicalData = { ...(petrochemicalData || {}), selectedContext: parsedContext };
+      } catch (error) {
+        console.warn('[Petrochemical] Invalid selected context:', error);
+      }
+    }
     
     // 如果有查询参数，自动填入输入框并发送
     if (query) {

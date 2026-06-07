@@ -2,7 +2,7 @@
 DeepSeek Neural Interface — Flask Backend
 Handles: chat backup/load, file upload/parsing, API proxy (streaming), WebSocket for real-time data
 """
-import os, json, csv, io, tempfile, threading, time
+import os, json, csv, io, tempfile, threading, time, uuid
 from flask import Flask, request, jsonify, Response, send_from_directory, session
 from flask_cors import CORS
 import requests as req
@@ -40,6 +40,9 @@ ALLOWED_EXT = {'.pdf', '.docx', '.csv', '.txt', '.json', '.md', '.py', '.js', '.
 class SharedState:
     def __init__(self):
         self.lock = threading.Lock()
+        self.reset()
+
+    def reset(self):
         self.data = {
             'petrochemical': {
                 'status': 'running',
@@ -50,7 +53,9 @@ class SharedState:
                 'selectedZone': None,
                 'selectedPerson': None,
                 'selectedEquipment': None,
-                'lastUpdate': None
+                'selectedContext': None,
+                'lastUpdate': None,
+                'sourceOnline': False
             },
             'ai': {
                 'connected': False,
@@ -65,11 +70,34 @@ class SharedState:
             }
         }
         self.subscribers = set()
+        self.timeline = []
+
+    def add_timeline(self, event_type, payload):
+        event = {
+            'id': str(uuid.uuid4()),
+            'type': event_type,
+            'payload': payload,
+            'timestamp': time.time()
+        }
+        with self.lock:
+            self.timeline.insert(0, event)
+            del self.timeline[50:]
+        return event
+
+    def get_timeline(self):
+        with self.lock:
+            return list(self.timeline)
+
+    def set_source_online(self, online):
+        with self.lock:
+            self.data['petrochemical']['sourceOnline'] = online
+        self.add_timeline('source_status', {'online': online})
     
     def update_petrochemical(self, data_type, data):
         with self.lock:
             self.data['petrochemical'][data_type] = data
             self.data['petrochemical']['lastUpdate'] = time.time()
+        self.add_timeline('petrochemical_update', {'type': data_type})
     
     def get_petrochemical(self, data_type=None):
         with self.lock:
@@ -89,6 +117,8 @@ class SharedState:
             socketio.emit('new_alert', alert, room='ai_room')
     
     def add_ai_command(self, command):
+        command_id = command.get('commandId') or str(uuid.uuid4())
+        command['commandId'] = command_id
         with self.lock:
             self.data['integration']['aiCommands'].append({
                 'command': command,
@@ -98,6 +128,8 @@ class SharedState:
         # 立即执行AI命令
         if WEBSOCKET_AVAILABLE and socketio:
             socketio.emit('ai_command', command, room='petrochemical_room')
+        self.add_timeline('command_queued', command)
+        return command
     
     def get_integration_data(self):
         with self.lock:
@@ -131,11 +163,15 @@ if WEBSOCKET_AVAILABLE:
                 shared_state.data['ai']['connected'] = True
             # 发送当前石化系统状态
             emit('petrochemical_state', shared_state.get_petrochemical())
+            emit('integration_timeline', shared_state.get_timeline())
             # 发送待处理的告警
             integration = shared_state.get_integration_data()
             for item in integration['alertsToAI']:
                 if not item['processed']:
                     emit('pending_alert', item['alert'])
+        elif room == 'petrochemical_room':
+            shared_state.set_source_online(True)
+            emit('petrochemical_state', shared_state.get_petrochemical())
 
     @socketio.on('leave')
     def handle_leave(data):
@@ -147,6 +183,8 @@ if WEBSOCKET_AVAILABLE:
         if room == 'ai_room':
             with shared_state.lock:
                 shared_state.data['ai']['connected'] = False
+        elif room == 'petrochemical_room':
+            shared_state.set_source_online(False)
 
     @socketio.on('petrochemical_update')
     def handle_petrochemical_update(data):
@@ -161,6 +199,7 @@ if WEBSOCKET_AVAILABLE:
         
         # 广播给AI系统
         emit('petrochemical_update', data, room='ai_room')
+        socketio.emit('integration_timeline', shared_state.get_timeline(), room='ai_room')
         
         # 如果是告警，特殊处理
         if data_type == 'alert':
@@ -201,7 +240,7 @@ if WEBSOCKET_AVAILABLE:
         params = data.get('params', {})
         
         # 添加到命令队列
-        shared_state.add_ai_command({
+        queued = shared_state.add_ai_command({
             'command': command,
             'params': params,
             'sender': 'ai'
@@ -209,8 +248,16 @@ if WEBSOCKET_AVAILABLE:
         
         emit('command_ack', {
             'command': command,
+            'commandId': queued['commandId'],
             'status': 'queued'
         })
+        socketio.emit('integration_timeline', shared_state.get_timeline(), room='ai_room')
+
+    @socketio.on('command_result')
+    def handle_command_result(data):
+        shared_state.add_timeline('command_result', data)
+        emit('command_result', data, room='ai_room')
+        socketio.emit('integration_timeline', shared_state.get_timeline(), room='ai_room')
 
     @socketio.on('ai_analysis_result')
     def handle_ai_analysis(data):
@@ -219,6 +266,8 @@ if WEBSOCKET_AVAILABLE:
         
         # 广播给石化系统
         emit('ai_analysis', data, room='petrochemical_room')
+        shared_state.add_timeline('ai_analysis', data)
+        socketio.emit('integration_timeline', shared_state.get_timeline(), room='ai_room')
         
         # 更新AI状态
         with shared_state.lock:
