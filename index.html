@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DeepSeek Neural Interface</title>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
 
@@ -1984,6 +1985,16 @@
     border-radius: 50%;
     background: var(--blue);
   }
+
+  @keyframes petro-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+  }
+
+  @keyframes petro-slide-in {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js" integrity="sha384-XmJ9SoHtVOHoQUcKvFAzVXwdkKo1Ie3bhmSoIAkcdsHGaIrVJIkmozyq0FJeb/Ly" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js" integrity="sha384-wl5TeDVvOWt30Pbf8aSo2ZrzsOjddu3avOBvHe+p+OhJt9gP6w9YXmDkN5DK2/dF" crossorigin="anonymous"></script>
@@ -2300,13 +2311,47 @@
     <div id="topbar">
       <button id="sidebar-toggle">☰</button>
       <div id="topbar-title">DEEPSEEK NEURAL INTERFACE</div>
-      <div class="topbar-status">
-        <div class="status-dot" id="status-dot"></div>
-        <span id="status-text">STANDBY</span>
-        <div class="model-badge" id="model-badge" style="display:none;">
-          <span class="dot"></span>
-          <span id="model-badge-text"></span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="petro-switch-btn" class="switch-btn-mini" onclick="window.location.href='petrochemical.html'" style="padding:6px 12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all 0.2s;position:relative;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          返回石化系统
+          <span id="petro-alert-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;background:#ef4444;border-radius:50%;border:2px solid #1e293b;animation:petro-pulse 1.5s ease-in-out infinite;"></span>
+        </button>
+        <div class="topbar-status">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-text">STANDBY</span>
+          <div class="model-badge" id="model-badge" style="display:none;">
+            <span class="dot"></span>
+            <span id="model-badge-text"></span>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Petrochemical Insight Panel -->
+    <div id="petro-insight-panel" style="display:none;position:fixed;top:70px;right:20px;width:320px;background:linear-gradient(135deg,rgba(15,23,42,0.98),rgba(15,23,42,0.95));border:1px solid rgba(124,58,237,0.4);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:1000;backdrop-filter:blur(20px);animation:petro-slide-in 0.4s ease;">
+      <div style="padding:16px;border-bottom:1px solid rgba(124,58,237,0.2);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#e2e8f0;">石化系统分析</div>
+              <div style="font-size:11px;color:#94a3b8;">实时数据已同步中</div>
+            </div>
+          </div>
+          <button onclick="hidePetroPanel()" style="width:28px;height:28px;border:none;background:rgba(148,163,184,0.1);border-radius:8px;color:#94a3b8;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="petro-insight-content" style="padding:16px;">
+        <div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;">等待石化系统数据中...</div>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid rgba(124,58,237,0.2);display:flex;gap:8px;">
+        <button onclick="window.location.href='petrochemical.html'" style="flex:1;padding:10px 16px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:10px;color:white;font-weight:600;font-size:12px;cursor:pointer;">返回优化</button>
+        <button onclick="insertPrompt('基于当前石化系统数据，请给出全面优化建议')" style="flex:1;padding:10px 16px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);border-radius:10px;color:#a78bfa;font-weight:600;font-size:12px;cursor:pointer;">深入分析</button>
       </div>
     </div>
 
@@ -3635,6 +3680,308 @@ renderChatList();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeSettings();
 });
+
+// =====================================
+// WebSocket 客户端 - 石化系统深度集成
+// =====================================
+let aiSocket = null;
+let petrochemicalData = null;
+let pendingAlerts = [];
+let integrationEnabled = false;
+
+function connectToPetrochemical() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;
+
+  aiSocket = io(wsUrl, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionDelay: 1000
+  });
+
+  aiSocket.on('connect', () => {
+    console.log('AI System connected to WebSocket');
+    aiSocket.emit('join', { room: 'ai_room' });
+    showIntegrationStatus(true);
+  });
+
+  aiSocket.on('disconnect', () => {
+    console.log('AI System disconnected from WebSocket');
+    showIntegrationStatus(false);
+  });
+
+  aiSocket.on('petrochemical_update', (data) => {
+    console.log('Received petrochemical update:', data);
+    petrochemicalData = data;
+    updatePetrochemicalPanel(data);
+  });
+
+  aiSocket.on('new_alert', (alert) => {
+    console.log('New alert from petrochemical:', alert);
+    pendingAlerts.push(alert);
+    showAlertNotification(alert);
+  });
+
+  aiSocket.on('pending_alert', (alert) => {
+    console.log('Pending alert:', alert);
+    pendingAlerts.push(alert);
+  });
+
+  aiSocket.on('ai_query_response', (response) => {
+    console.log('AI query response:', response);
+  });
+}
+
+function showIntegrationStatus(connected) {
+  integrationEnabled = connected;
+  const statusText = connected ? '石化系统已连接' : '石化系统未连接';
+  console.log('Integration status:', statusText);
+}
+
+function updatePetrochemicalPanel(data) {
+  if (!data || !data.data) return;
+
+  const type = data.type;
+  const content = data.data;
+  console.log('石化系统数据更新:', type);
+  
+  // 更新全局数据
+  petrochemicalData = content;
+  
+  // 显示/更新智能面板
+  showPetroPanel(content);
+}
+
+function showPetroPanel(data) {
+  const panel = document.getElementById('petro-insight-panel');
+  const contentDiv = document.getElementById('petro-insight-content');
+  const alertDot = document.getElementById('petro-alert-dot');
+  
+  // 显示警报点
+  alertDot.style.display = 'inline-block';
+  
+  let html = '';
+  
+  // 传感器数据
+  if (data.sensors && data.sensors.length > 0) {
+    const warningSensors = data.sensors.filter(s => s.status === 'warning' || s.status === 'danger');
+    html += `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:600;color:#cbd5e1;">📡 传感器状态</span>
+          <span style="font-size:11px;color:${warningSensors.length > 0 ? '#ef4444' : '#22c55e'};">${data.sensors.length}个在线 ${warningSensors.length > 0 ? '· ' + warningSensors.length + '个告警' : ''}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+          ${data.sensors.slice(0, 4).map(s => `
+            <div style="padding:8px;background:rgba(15,23,42,0.6);border-radius:8px;border-left:3px solid ${s.status === 'warning' ? '#f59e0b' : s.status === 'danger' ? '#ef4444' : '#22c55e'};">
+              <div style="font-size:11px;font-weight:600;color:#e2e8f0;">${s.name}</div>
+              <div style="font-size:10px;color:#94a3b8;">${s.values?.temp || s.values?.pressure || s.values?.gas || '--'}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // 警报数据
+  if (data.alerts && data.alerts.length > 0) {
+    const criticalAlerts = data.alerts.filter(a => a.level === 'danger');
+    html += `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:600;color:#cbd5e1;">⚠️ 实时警报</span>
+          <span style="font-size:11px;color:${criticalAlerts.length > 0 ? '#ef4444' : '#f59e0b'};">${data.alerts.length}个</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${data.alerts.slice(0, 3).map(a => `
+            <div style="padding:8px 10px;background:${a.level === 'danger' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'} ;border:1px solid ${a.level === 'danger' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'} ;border-radius:8px;">
+              <div style="font-size:11px;font-weight:600;color:${a.level === 'danger' ? '#fca5a5' : '#fde047'};">${a.title}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-top:2px;">${a.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // 人员和设备数据
+  if (data.personnel || data.equipment) {
+    html += `
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+        ${data.personnel ? `
+          <div style="padding:10px;background:rgba(34,197,94,0.1);border-radius:8px;border:1px solid rgba(34,197,94,0.2);text-align:center;">
+            <div style="font-size:18px;">👥</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">在岗人员</div>
+            <div style="font-size:16px;font-weight:700;color:#22c55e;">${data.personnel.length}</div>
+          </div>
+        ` : ''}
+        ${data.equipment ? `
+          <div style="padding:10px;background:rgba(14,165,233,0.1);border-radius:8px;border:1px solid rgba(14,165,233,0.2);text-align:center;">
+            <div style="font-size:18px;">🔧</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">在线设备</div>
+            <div style="font-size:16px;font-weight:700;color:#0ea5e9;">${data.equipment.filter(e => e.status === 'online').length}/${data.equipment.length}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  if (!html) {
+    html = '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;">等待石化系统数据中...</div>';
+  }
+  
+  contentDiv.innerHTML = html;
+  panel.style.display = 'block';
+}
+
+function hidePetroPanel() {
+  document.getElementById('petro-insight-panel').style.display = 'none';
+}
+
+function showAlertNotification(alert) {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+    z-index: 9999;
+    max-width: 350px;
+    animation: slideInRight 0.3s ease;
+  `;
+  notification.innerHTML = `
+    <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+      🚨 石化系统告警
+    </div>
+    <div style="font-size: 13px; opacity: 0.95;">
+      ${alert.title || '新告警'}
+    </div>
+    <div style="font-size: 12px; opacity: 0.8; margin-top: 6px;">
+      ${alert.desc || alert.message || ''}
+    </div>
+  `;
+
+  document.body.appendChild(notification);
+
+  // 5秒后自动消失
+  setTimeout(() => {
+    notification.style.animation = 'fadeOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 5000);
+}
+
+function queryPetrochemicalData(query_type, target = null) {
+  if (aiSocket && integrationEnabled) {
+    aiSocket.emit('ai_query', { query_type, target });
+  }
+}
+
+function sendAIAnalysisToPetrochemical(analysis) {
+  if (aiSocket && integrationEnabled) {
+    aiSocket.emit('ai_analysis_result', analysis);
+  }
+}
+
+function sendAICommand(command, params = {}) {
+  if (aiSocket && integrationEnabled) {
+    aiSocket.emit('ai_command', { command, params });
+  }
+}
+
+// =====================================
+// 初始化石化系统连接
+// =====================================
+document.addEventListener('DOMContentLoaded', () => {
+  // 检查是否从石化系统跳转
+  const urlParams = new URLSearchParams(window.location.search);
+  const context = urlParams.get('context');
+  const query = urlParams.get('query');
+
+  if (context === 'petrochemical') {
+    console.log('[Petrochemical] Received context from petrochemical system');
+    
+    // 如果有查询参数，自动填入输入框并发送
+    if (query) {
+      let decodedQuery = '';
+      try {
+        // 安全解码
+        decodedQuery = decodeURIComponent(query);
+        console.log('[Petrochemical] Auto-fill query:', decodedQuery.substring(0, 50) + '...');
+      } catch (e) {
+        console.error('[Petrochemical] Error decoding query:', e);
+        // 备用解码方法
+        try {
+          decodedQuery = query.replace(/%([0-9A-F]{2})/gi, (match, hex) => {
+            return String.fromCharCode(parseInt(hex, 16));
+          });
+          console.log('[Petrochemical] Fallback decoded query:', decodedQuery.substring(0, 50) + '...');
+        } catch (e2) {
+          console.error('[Petrochemical] Fallback also failed:', e2);
+          decodedQuery = '请分析石化厂区数据';
+        }
+      }
+      
+      // 设置一个短延迟确保DOM已完全加载
+      setTimeout(() => {
+        // 使用精确的选择器找到用户输入框
+        const input = document.querySelector('#user-input');
+        if (input) {
+          console.log('[Petrochemical] Found input field:', input);
+          input.value = decodedQuery;
+          
+          // 触发input事件以便前端框架检测到变化
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          
+          // 模拟用户点击发送按钮
+          const sendBtn = document.querySelector('#send-btn');
+          if (sendBtn) {
+            console.log('[Petrochemical] Found send button:', sendBtn);
+            // 先移除disabled状态
+            sendBtn.disabled = false;
+            sendBtn.click();
+            console.log('[Petrochemical] Send button clicked');
+          } else {
+            console.error('[Petrochemical] Send button not found');
+          }
+        } else {
+          console.error('[Petrochemical] Input field not found');
+        }
+      }, 1000);
+    }
+  }
+
+  // 启动石化系统连接
+  connectToPetrochemical();
+});
+
+// 添加动画样式
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(style);
 </script>
 </body>
 </html>

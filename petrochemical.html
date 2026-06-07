@@ -1,0 +1,6075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>石化厂区全场景北斗/多传感器融合主动感知识别与定位系统</title>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --primary: #0ea5e9;
+    --primary-dark: #0284c7;
+    --primary-light: #7dd3fc;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --success: #22c55e;
+    --info: #3b82f6;
+    --purple: #7c3aed;
+    --bg-main: #0f172a;
+    --bg-card: rgba(30, 41, 59, 0.85);
+    --bg-card-hover: rgba(51, 65, 85, 0.9);
+    --border: rgba(148, 163, 184, 0.3);
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.3);
+    --shadow-card: 0 8px 32px rgba(15, 23, 42, 0.5);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 页面加载动画 */
+  .page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+
+  .page-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .loader-content {
+    text-align: center;
+  }
+
+  .loader-spinner {
+    width: 60px;
+    height: 60px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loader-text {
+    font-size: 14px;
+    color: var(--text-muted);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .loader-progress {
+    width: 200px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 16px;
+    overflow: hidden;
+  }
+
+  .loader-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--purple));
+    width: 0%;
+    animation: loading 2s ease-out forwards;
+  }
+
+  @keyframes loading {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+  }
+
+  body {
+    font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* 动态背景粒子 */
+  .particles-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--primary);
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: float 15s infinite ease-in-out;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.3; }
+    90% { opacity: 0.3; }
+    100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+  }
+
+  .bg-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      linear-gradient(rgba(14, 165, 233, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(14, 165, 233, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+    animation: gridMove 20s linear infinite;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(40px, 40px); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 2800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  /* 卡片悬浮效果 */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(14, 165, 233, 0.2);
+    border-color: var(--primary);
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: visible;
+    z-index: 1000;
+    animation: slideDown 0.5s ease;
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--primary));
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* 状态指示灯动画 */
+  .status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-dot-animated {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: statusPulse 2s ease-in-out infinite;
+  }
+
+  .status-dot-animated.online { background: var(--success); }
+  .status-dot-animated.warning { background: var(--warning); }
+  .status-dot-animated.danger { background: var(--danger); animation: dangerPulse 1s ease-in-out infinite; }
+
+  @keyframes statusPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+  }
+
+  @keyframes dangerPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { transform: scale(1.3); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  }
+
+  /* 数据刷新动画 */
+  .data-refresh {
+    animation: dataRefresh 0.5s ease;
+  }
+
+  @keyframes dataRefresh {
+    0% { opacity: 0.5; transform: scale(0.98); }
+    50% { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  /* 进度条动画 */
+  .progress-bar-animated {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--purple), var(--primary));
+    background-size: 200% 100%;
+    animation: progressGradient 2s linear infinite;
+  }
+
+  @keyframes progressGradient {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+  }
+
+  /* 按钮涟漪效果 */
+  .btn-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.5s ease, height 0.5s ease;
+  }
+
+  .btn-ripple:active::after {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+  }
+
+  /* 数字跳动动画 */
+  .number-animate {
+    animation: numberPop 0.3s ease;
+  }
+
+  @keyframes numberPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); color: var(--primary); }
+    100% { transform: scale(1); }
+  }
+
+  /* 工具提示样式 */
+  .tooltip {
+    position: relative;
+  }
+
+  .tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+  }
+
+  .tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
+  }
+
+  /* 数据大屏模式样式 */
+  .dashboard-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-main);
+    z-index: 99998;
+    display: none;
+    padding: 20px;
+    overflow: auto;
+  }
+
+  .dashboard-mode.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    height: 100%;
+  }
+
+  .dashboard-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: scaleIn 0.5s ease;
+  }
+
+  @keyframes scaleIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .dashboard-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+
+  .dashboard-label {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  /* 视频监控模拟样式 */
+  .video-monitor {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .video-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+  }
+
+  .video-title {
+    font-size: 12px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .video-recording {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--danger);
+  }
+
+  .video-recording-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    animation: recordingPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes recordingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .video-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: white;
+  }
+
+  /* 高级图表容器 */
+  .chart-container {
+    position: relative;
+    padding: 20px;
+  }
+
+  /* 雷达图 */
+  .radar-chart {
+    position: relative;
+    width: 200px;
+    height: 200px;
+  }
+
+  .radar-bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: 
+      repeating-radial-gradient(
+        circle at center,
+        transparent 0,
+        transparent 19%,
+        rgba(14, 165, 233, 0.1) 20%,
+        rgba(14, 165, 233, 0.1) 20%
+      );
+  }
+
+  .radar-axis {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 50%;
+    background: var(--border);
+    transform-origin: bottom center;
+  }
+
+  .radar-data {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    transform: translate(-50%, -50%);
+  }
+
+  .radar-polygon {
+    fill: rgba(14, 165, 233, 0.3);
+    stroke: var(--primary);
+    stroke-width: 2;
+  }
+
+  /* 饼图 */
+  .pie-chart {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--success) 0deg 120deg,
+      var(--warning) 120deg 200deg,
+      var(--danger) 200deg 280deg,
+      var(--info) 280deg 360deg
+    );
+    animation: pieRotate 1s ease-out;
+  }
+
+  @keyframes pieRotate {
+    from { transform: rotate(-90deg); }
+    to { transform: rotate(0deg); }
+  }
+
+  .pie-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 60%;
+    background: var(--bg-card);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* 热力图 */
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+  }
+
+  .heatmap-cell {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  .heatmap-cell.level-1 { background: rgba(34, 197, 94, 0.2); }
+  .heatmap-cell.level-2 { background: rgba(34, 197, 94, 0.4); }
+  .heatmap-cell.level-3 { background: rgba(245, 158, 11, 0.3); }
+  .heatmap-cell.level-4 { background: rgba(245, 158, 11, 0.5); }
+  .heatmap-cell.level-5 { background: rgba(239, 68, 68, 0.4); }
+  .heatmap-cell.level-6 { background: rgba(239, 68, 68, 0.6); }
+
+  /* 3D厂区地图 */
+  .map-3d-container {
+    perspective: 1000px;
+    width: 100%;
+    height: 400px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .map-3d {
+    transform: rotateX(45deg) rotateZ(-10deg);
+    transform-style: preserve-3d;
+    transition: transform 0.5s ease;
+  }
+
+  .map-3d:hover {
+    transform: rotateX(30deg) rotateZ(0deg);
+  }
+
+  .building-3d {
+    position: absolute;
+    transform-style: preserve-3d;
+    transition: all 0.3s ease;
+  }
+
+  .building-3d:hover {
+    transform: translateZ(20px);
+  }
+
+  .building-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: translateZ(var(--height));
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .building-front {
+    position: absolute;
+    width: 100%;
+    height: var(--height);
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.3), rgba(14, 165, 233, 0.1));
+    transform-origin: bottom;
+    transform: rotateX(-90deg);
+  }
+
+  .building-side {
+    position: absolute;
+    width: var(--height);
+    height: var(--height);
+    background: linear-gradient(180deg, rgba(124, 58, 237, 0.3), rgba(124, 58, 237, 0.1));
+    transform-origin: left;
+    transform: rotateY(90deg);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-glow);
+    transition: all var(--transition);
+  }
+
+  .logo:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(14, 165, 233, 0.5);
+  }
+
+  .logo svg {
+    width: 28px;
+    height: 28px;
+    fill: white;
+  }
+
+  .title-group h1 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-light) 0%, white 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .title-group h1::after {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: var(--primary);
+    border-radius: 2px;
+    animation: pulseIndicator 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseIndicator {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .title-group p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .title-group p::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: statusPulse 2s ease-in-out infinite;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 100px;
+    transition: all var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.1), transparent);
+    animation: statusShimmer 3s ease-in-out infinite;
+  }
+
+  @keyframes statusShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--success);
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+  }
+
+  .status-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--success);
+    position: relative;
+    z-index: 1;
+  }
+
+  .time-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 10px 16px;
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    border-radius: 100px;
+    transition: all var(--transition);
+  }
+
+  .time-display:hover {
+    background: rgba(14, 165, 233, 0.2);
+    border-color: rgba(14, 165, 233, 0.5);
+  }
+
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    border-radius: 100px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+    overflow: visible;
+    z-index: 10;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .nav-btn:hover {
+    background: rgba(14, 165, 233, 0.1);
+    color: var(--primary);
+  }
+
+  .nav-btn.active {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+  }
+
+  .nav-btn.secondary {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    color: white;
+  }
+
+  .nav-btn.secondary:hover {
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .nav-btn.warning {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+  }
+
+  .nav-btn.warning:hover {
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .nav-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+
+  .analytics-panel {
+    position: absolute;
+    top: 100px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.5);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .analytics-panel .close-btn {
+    padding: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: var(--danger);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .analytics-panel .close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: scale(1.1);
+  }
+
+  .analytics-panel .close-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .analytics-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    transition: all var(--transition);
+  }
+
+  .analytics-card:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(14, 165, 233, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .analytics-card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .analytics-card.full-width {
+    grid-column: 1 / -1;
+  }
+
+  /* 实时状态概览 */
+  .overview-section {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .overview-item {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .overview-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .overview-icon.temperature {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+
+  .overview-icon.pressure {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+  }
+
+  .overview-icon.gas {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+  }
+
+  .overview-content {
+    flex: 1;
+  }
+
+  .overview-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .overview-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .overview-trend {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  .overview-trend.up { color: #ef4444; }
+  .overview-trend.down { color: #3b82f6; }
+  .overview-trend.stable { color: #22c55e; }
+
+  /* 趋势图表 */
+  .trend-chart {
+    display: flex;
+    gap: 10px;
+    height: 150px;
+  }
+
+  .chart-y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 10px 0;
+    width: 40px;
+    text-align: right;
+  }
+
+  .chart-area {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    position: relative;
+  }
+
+  .trend-line {
+    width: 100%;
+    height: 100px;
+  }
+
+  .chart-legend {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 12px;
+    font-size: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+  }
+
+  .chart-x-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 0 10px;
+    margin-top: 8px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .dot.red { background: #ef4444; }
+  .dot.blue { background: #3b82f6; }
+  .dot.green { background: #22c55e; }
+  .dot.yellow { background: #f59e0b; }
+  .dot.gray { background: #64748b; }
+
+  /* 传感器状态分布 */
+  .sensor-status-dist {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-bar {
+    display: flex;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .status-segment {
+    transition: width 0.5s ease;
+  }
+
+  .status-segment.online {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+  }
+
+  .status-segment.warning {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+  }
+
+  .status-segment.offline {
+    background: linear-gradient(90deg, #475569, #334155);
+  }
+
+  .status-labels {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  .status-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 设备效率仪表 */
+  .efficiency-detail {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .efficiency-gauge {
+    position: relative;
+    width: 120px;
+    height: 70px;
+  }
+
+  .gauge-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .gauge-value {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    font-weight: 700;
+    color: #22c55e;
+  }
+
+  .equipment-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .equipment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .eq-name {
+    color: var(--text-secondary);
+  }
+
+  .eq-status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .eq-status.online {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+
+  .eq-status.standby {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+  }
+
+  .eq-status.fault {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+
+  /* 告警时间线 */
+  .alert-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .timeline-item {
+    display: flex;
+    gap: 12px;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: -12px;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .timeline-item:last-child::before {
+    display: none;
+  }
+
+  .timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: absolute;
+    left: -4px;
+    top: 4px;
+  }
+
+  .timeline-item.warning .timeline-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  }
+
+  .timeline-item.danger .timeline-dot {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  }
+
+  .timeline-content {
+    flex: 1;
+  }
+
+  .timeline-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .timeline-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .no-alerts {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 20px;
+  }
+
+  /* 区域安全评分 */
+  .zone-scores {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .zone-score-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 8px;
+  }
+
+  .zone-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 80px;
+  }
+
+  .score-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .score-fill.high {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+  }
+
+  .score-fill.medium {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+  }
+
+  .score-fill.low {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+  }
+
+  .score-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    width: 50px;
+    text-align: right;
+  }
+
+  /* LIVE标签 */
+  .live-badge {
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    animation: livePulse 2s ease-in-out infinite;
+  }
+
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .chart-placeholder {
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 100%;
+  }
+
+  .chart-bar {
+    width: 24px;
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: 4px 4px 0 0;
+    transition: all 0.5s ease;
+    animation: chartGrow 1s ease-out forwards;
+  }
+
+  @keyframes chartGrow {
+    from { height: 0; }
+  }
+
+  .chart-bar:nth-child(2) { animation-delay: 0.1s; }
+  .chart-bar:nth-child(3) { animation-delay: 0.2s; }
+  .chart-bar:nth-child(4) { animation-delay: 0.3s; }
+  .chart-bar:nth-child(5) { animation-delay: 0.4s; }
+  .chart-bar:nth-child(6) { animation-delay: 0.5s; }
+  .chart-bar:nth-child(7) { animation-delay: 0.6s; }
+
+  .efficiency-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    position: relative;
+  }
+
+  .ring-progress {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--success) calc(var(--progress) * 1%),
+      rgba(148, 163, 184, 0.2) calc(var(--progress) * 1%)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ring-progress::before {
+    content: '';
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.8);
+    position: absolute;
+  }
+
+  .ring-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--success);
+    position: relative;
+    z-index: 1;
+  }
+
+  .heatmap-placeholder {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    height: 100px;
+  }
+
+  .heat-cell {
+    border-radius: 8px;
+    transition: all var(--transition);
+  }
+
+  .heat-cell.high {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+
+  .heat-cell.medium {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+  }
+
+  .heat-cell.low {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+  }
+
+  .alert-stats {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    display: block;
+  }
+
+  .stat-value.warning { color: var(--warning); }
+  .stat-value.danger { color: var(--danger); }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: block;
+  }
+
+  .analyze-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.3);
+    margin-top: auto;
+  }
+
+  .analyze-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(124, 58, 237, 0.4);
+  }
+
+  .analyze-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: white;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 400px;
+    gap: 20px;
+    height: calc(100vh - 140px);
+  }
+
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.05), transparent);
+  }
+
+  .panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--primary);
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .sensor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sensor-card {
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
+    cursor: pointer;
+  }
+
+  .sensor-card:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(14, 165, 233, 0.4);
+    transform: translateX(4px);
+  }
+
+  .sensor-card.active {
+    border-color: var(--primary);
+    background: rgba(14, 165, 233, 0.1);
+  }
+
+  .sensor-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .sensor-name {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sensor-icon {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sensor-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--primary-light);
+  }
+
+  .sensor-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  .sensor-status.online {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success);
+  }
+
+  .sensor-status.warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+  }
+
+  .sensor-status.danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+  }
+
+  .sensor-data {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .data-item {
+    padding: 8px 10px;
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 6px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+  }
+
+  .data-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .data-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-light);
+  }
+
+  .data-value.danger {
+    color: var(--danger);
+  }
+
+  .data-value.warning {
+    color: var(--warning);
+  }
+
+  .map-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .map-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.05), transparent);
+  }
+
+  .map-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .map-btn {
+    padding: 8px 14px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .map-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+
+  .map-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+
+  .map-viewport {
+    flex: 1;
+    position: relative;
+    background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+    overflow: hidden;
+  }
+
+  .map-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .zone {
+    fill: rgba(14, 165, 233, 0.03);
+    stroke: rgba(14, 165, 233, 0.25);
+    stroke-width: 2;
+    transition: all var(--transition);
+    cursor: pointer;
+  }
+
+  .zone:hover {
+    fill: rgba(14, 165, 233, 0.1);
+    stroke: var(--primary);
+  }
+
+  .zone.danger {
+    fill: rgba(239, 68, 68, 0.08);
+    stroke: rgba(239, 68, 68, 0.4);
+  }
+
+  .zone.danger:hover {
+    fill: rgba(239, 68, 68, 0.15);
+  }
+
+  .zone.warning {
+    fill: rgba(245, 158, 11, 0.06);
+    stroke: rgba(245, 158, 11, 0.35);
+  }
+
+  .zone.warning:hover {
+    fill: rgba(245, 158, 11, 0.12);
+  }
+
+  .zone-label {
+    fill: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .building {
+    fill: rgba(71, 85, 105, 0.35);
+    stroke: rgba(148, 163, 184, 0.25);
+    stroke-width: 1;
+  }
+
+  .tower {
+    fill: url(#towerGradient);
+    stroke: rgba(148, 163, 184, 0.3);
+    stroke-width: 1;
+  }
+
+  .tank {
+    fill: rgba(239, 68, 68, 0.2);
+    stroke: rgba(239, 68, 68, 0.4);
+    stroke-width: 1.5;
+  }
+
+  .road {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.15);
+    stroke-width: 10;
+  }
+
+  .road-secondary {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.1);
+    stroke-width: 6;
+  }
+
+  .personnel {
+    cursor: pointer;
+  }
+
+  .personnel:hover .personnel-ring {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+
+  .personnel-ring {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2;
+    animation: ring-pulse 2s ease-out infinite;
+    transform-origin: center;
+  }
+
+  @keyframes ring-pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+
+  .personnel-dot {
+    fill: var(--primary);
+    filter: drop-shadow(0 0 8px var(--primary));
+  }
+
+  .personnel-label {
+    fill: white;
+    font-size: 10px;
+    font-weight: 500;
+    text-anchor: middle;
+  }
+
+  .equipment {
+    cursor: pointer;
+  }
+
+  .equipment-shape {
+    fill: rgba(124, 58, 237, 0.25);
+    stroke: #7c3aed;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.5));
+  }
+
+  .beacon {
+    cursor: pointer;
+  }
+
+  .beacon-dot {
+    fill: var(--warning);
+    filter: drop-shadow(0 0 6px var(--warning));
+    animation: beacon-blink 1s ease-in-out infinite;
+  }
+
+  @keyframes beacon-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .beacon-line {
+    stroke: var(--warning);
+    stroke-width: 1;
+    stroke-dasharray: 4, 4;
+    animation: dash 1s linear infinite;
+  }
+
+  @keyframes dash {
+    to { stroke-dashoffset: -8; }
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .stat-value.primary { color: var(--primary-light); }
+  .stat-value.success { color: var(--success); }
+  .stat-value.warning { color: var(--warning); }
+  .stat-value.danger { color: var(--danger); }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .ai-section {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  .ai-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .ai-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+  }
+
+  .ai-avatar svg {
+    width: 22px;
+    height: 22px;
+    fill: white;
+  }
+
+  .ai-info h3 {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .ai-info p {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .ai-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ai-suggestion {
+    padding: 10px 14px;
+    background: rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ai-suggestion:hover {
+    background: rgba(124, 58, 237, 0.2);
+    transform: translateX(4px);
+  }
+
+  .ai-suggestion svg {
+    width: 16px;
+    height: 16px;
+    fill: #7c3aed;
+  }
+
+  .alerts-section {
+    margin-top: 16px;
+  }
+
+  .alert-item {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border-left: 3px solid var(--warning);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .alert-item:hover {
+    background: rgba(15, 23, 42, 0.8);
+  }
+
+  .alert-item.danger {
+    border-left-color: var(--danger);
+  }
+
+  .alert-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .alert-item.danger .alert-icon {
+    background: rgba(239, 68, 68, 0.15);
+  }
+
+  .alert-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--warning);
+  }
+
+  .alert-item.danger .alert-icon svg {
+    fill: var(--danger);
+  }
+
+  .alert-content h4 {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .alert-content p {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .alert-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .tooltip {
+    position: absolute;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    box-shadow: var(--shadow-card);
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition);
+    min-width: 220px;
+  }
+
+  .tooltip.visible {
+    opacity: 1;
+  }
+
+  .tooltip-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary-light);
+  }
+
+  .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 3px 0;
+  }
+
+  .tooltip-row span:first-child {
+    color: var(--text-muted);
+  }
+
+  .legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+  }
+
+  .legend-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .legend-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .legend-dot.personnel { background: var(--primary); }
+  .legend-dot.equipment { background: #7c3aed; }
+  .legend-dot.beacon { background: var(--warning); }
+
+  .mini-map {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 160px;
+    height: 140px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px;
+    margin-top: 12px;
+  }
+
+  .nav-tab {
+    padding: 8px 16px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .nav-tab.active {
+    background: rgba(14, 165, 233, 0.2);
+    border-color: var(--primary);
+    color: var(--primary-light);
+    font-weight: 600;
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  @media (max-width: 1600px) {
+    .grid {
+      grid-template-columns: 300px 1fr 360px;
+    }
+  }
+
+  @media (max-width: 1200px) {
+    .grid {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    .map-viewport {
+      min-height: 500px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- 页面加载动画 -->
+<div id="page-loader" class="page-loader">
+  <div class="loader-content">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">石化厂区感知系统正在初始化...</div>
+    <div class="loader-progress">
+      <div class="loader-progress-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 动态背景粒子 -->
+<div class="particles-bg" id="particles-bg"></div>
+
+<!-- 数据大屏模式 -->
+<div id="dashboard-mode" class="dashboard-mode">
+  <div class="dashboard-grid">
+    <div class="dashboard-card">
+      <div class="dashboard-value" id="dash-sensors">10</div>
+      <div class="dashboard-label">传感器总数</div>
+    </div>
+    <div class="dashboard-card">
+      <div class="dashboard-value" id="dash-online">7</div>
+      <div class="dashboard-label">在线设备</div>
+    </div>
+    <div class="dashboard-card">
+      <div class="dashboard-value" id="dash-alerts">0</div>
+      <div class="dashboard-label">活跃告警</div>
+    </div>
+    <div class="dashboard-card">
+      <div class="dashboard-value" id="dash-personnel">12</div>
+      <div class="dashboard-label">在岗人员</div>
+    </div>
+    <div class="dashboard-card" style="grid-column: span 2;">
+      <div style="font-size: 24px; margin-bottom: 12px;">📊 系统状态</div>
+      <div style="display: flex; gap: 20px; justify-content: center;">
+        <div class="pie-chart">
+          <div class="pie-center">状态</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+          <div><span style="color: var(--success);">●</span> 正常 70%</div>
+          <div><span style="color: var(--warning);">●</span> 注意 20%</div>
+          <div><span style="color: var(--danger);">●</span> 告警 10%</div>
+        </div>
+      </div>
+    </div>
+    <div class="dashboard-card" style="grid-column: span 2;">
+      <div style="font-size: 24px; margin-bottom: 12px;">📈 数据趋势</div>
+      <div class="heatmap-grid">
+        <div class="heatmap-cell level-2"></div>
+        <div class="heatmap-cell level-3"></div>
+        <div class="heatmap-cell level-1"></div>
+        <div class="heatmap-cell level-4"></div>
+        <div class="heatmap-cell level-2"></div>
+        <div class="heatmap-cell level-5"></div>
+        <div class="heatmap-cell level-3"></div>
+        <div class="heatmap-cell level-1"></div>
+        <div class="heatmap-cell level-3"></div>
+        <div class="heatmap-cell level-2"></div>
+        <div class="heatmap-cell level-4"></div>
+        <div class="heatmap-cell level-1"></div>
+        <div class="heatmap-cell level-5"></div>
+        <div class="heatmap-cell level-2"></div>
+        <div class="heatmap-cell level-3"></div>
+        <div class="heatmap-cell level-4"></div>
+      </div>
+    </div>
+  </div>
+  <button onclick="toggleDashboardMode()" style="position: fixed; top: 20px; right: 20px; padding: 12px 24px; background: var(--danger); border: none; border-radius: 8px; color: white; font-size: 14px; cursor: pointer;">退出大屏模式</button>
+</div>
+
+<!-- 模拟控制面板 -->
+<div id="simulation-panel" class="simulation-panel hidden">
+  <div class="panel-header">
+    <div class="panel-title">
+      <svg viewBox="0 0 24 24">
+        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13h-3v3c0 .55-.45 1-1 1s-1-.45-1-1v-3H6c-.55 0-1-.45-1-1s.45-1 1-1h3V8c0-.55.45-1 1-1s1 .45 1 1v3h3c.55 0 1 .45 1 1s-.45 1-1 1z"/>
+      </svg>
+      动态模拟控制台
+    </div>
+    <span id="sim-status" class="status-badge inactive">
+      <span class="status-dot-pulse" style="display:none;"></span>
+      <span id="sim-status-text">已停止</span>
+    </span>
+  </div>
+  
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="sim-count">0</div>
+      <div class="stat-label">触发次数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="sim-alerts">0</div>
+      <div class="stat-label">活跃告警</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="sim-severity">-</div>
+      <div class="stat-label">最高等级</div>
+    </div>
+  </div>
+  
+  <div class="log-container" id="simulation-log">
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:20px;">点击"开始模拟"按钮启动动态模拟</div>
+  </div>
+  
+  <div class="controls">
+    <button class="control-btn danger" onclick="toggleSimulation()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+      <span id="sim-btn-text">开始模拟</span>
+    </button>
+    <button class="control-btn" onclick="triggerRandomScenario()" id="trigger-btn" disabled>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+      </svg>
+      手动触发
+    </button>
+  </div>
+</div>
+
+<!-- 设备控制面板 -->
+<div id="equipment-control-panel" class="control-panel hidden">
+  <div class="panel-header">
+    <div class="panel-title">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="#22c55e">
+        <path d="M22 9V7h-2V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2v-2h-2V9h2zm-4 10H4V5h14v14zM6 13h5v4H6v-4zm6-6h4v3h-4V7zM6 7h5v5H6V7zm6 4h4v6h-4v-6z"/>
+      </svg>
+      设备控制中心
+    </div>
+    <button class="close-btn" onclick="hidePanel('equipment-control-panel')">✕</button>
+  </div>
+  <div class="equipment-controls" id="equipment-controls">
+    <!-- 动态生成 -->
+  </div>
+</div>
+
+<!-- 天气预报面板 -->
+<div id="weather-panel" class="control-panel hidden">
+  <div class="panel-header">
+    <div class="panel-title">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="#3b82f6">
+        <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.34 0-6 2.66-6 6s2.66 6 6 6 6-2.66 6-6-2.66-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/>
+      </svg>
+      天气预报系统
+    </div>
+    <button class="close-btn" onclick="hidePanel('weather-panel')">✕</button>
+  </div>
+  <div class="weather-content">
+    <div class="weather-current" id="weather-current">
+      <div class="weather-icon">☀️</div>
+      <div class="weather-temp">28°C</div>
+      <div class="weather-desc">晴朗</div>
+    </div>
+    <div class="weather-forecast" id="weather-forecast">
+      <!-- 动态生成 -->
+    </div>
+    <div class="weather-effects">
+      <h4>气象影响</h4>
+      <div class="effect-item">
+        <span>温度波动</span>
+        <span class="effect-value" id="temp-effect">±0.5°C</span>
+      </div>
+      <div class="effect-item">
+        <span>压力变化</span>
+        <span class="effect-value" id="pressure-effect">±0.1MPa</span>
+      </div>
+      <div class="effect-item">
+        <span>气体扩散</span>
+        <span class="effect-value" id="gas-effect">低</span>
+      </div>
+    </div>
+    <button class="control-btn danger" onclick="randomWeather()">
+      🎲 随机天气
+    </button>
+  </div>
+</div>
+
+<!-- 巡检任务面板 -->
+<div id="patrol-panel" class="control-panel hidden">
+  <div class="panel-header">
+    <div class="panel-title">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="#f59e0b">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </svg>
+      巡检任务系统
+    </div>
+    <button class="close-btn" onclick="hidePanel('patrol-panel')">✕</button>
+  </div>
+  <div class="patrol-stats">
+    <div class="patrol-stat">
+      <div class="stat-value" id="patrol-total">0</div>
+      <div class="stat-label">总任务</div>
+    </div>
+    <div class="patrol-stat">
+      <div class="stat-value" id="patrol-completed">0</div>
+      <div class="stat-label">已完成</div>
+    </div>
+    <div class="patrol-stat">
+      <div class="stat-value" id="patrol-pending">0</div>
+      <div class="stat-label">待处理</div>
+    </div>
+  </div>
+  <div class="patrol-tasks" id="patrol-tasks">
+    <!-- 动态生成 -->
+  </div>
+  <button class="control-btn danger" onclick="createPatrolTask()">
+    ➕ 创建巡检任务
+  </button>
+</div>
+
+<!-- 应急预案面板 -->
+<div id="emergency-panel" class="control-panel hidden">
+  <div class="panel-header">
+    <div class="panel-title">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="#ef4444">
+        <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm6 9.09c0 4-2.55 7.7-6 8.83-3.45-1.13-6-4.82-6-8.83v-4.7l6-2.25 6 2.25v4.7zM9.41 11.59L8 13l4 4 8-8-1.41-1.42L12 14.17l-2.59-2.58z"/>
+      </svg>
+      应急预案演练
+    </div>
+    <button class="close-btn" onclick="hidePanel('emergency-panel')">✕</button>
+  </div>
+  <div class="emergency-levels">
+    <div class="emergency-level" onclick="triggerEmergency('low')">
+      <div class="level-icon">🟡</div>
+      <div class="level-info">
+        <div class="level-name">三级预警</div>
+        <div class="level-desc">一般事件，注意监控</div>
+      </div>
+    </div>
+    <div class="emergency-level" onclick="triggerEmergency('medium')">
+      <div class="level-icon">🟠</div>
+      <div class="level-info">
+        <div class="level-name">二级预警</div>
+        <div class="level-desc">较大事件，启动预案</div>
+      </div>
+    </div>
+    <div class="emergency-level" onclick="triggerEmergency('high')">
+      <div class="level-icon">🔴</div>
+      <div class="level-info">
+        <div class="level-name">一级预警</div>
+        <div class="level-desc">重大事件，全面响应</div>
+      </div>
+    </div>
+  </div>
+  <div class="emergency-log" id="emergency-log">
+    <h4>演练记录</h4>
+    <div id="emergency-log-content">
+      <div class="log-entry">暂无演练记录</div>
+    </div>
+  </div>
+</div>
+
+<!-- 功能菜单 -->
+<div id="feature-menu" class="feature-menu">
+  <div class="feature-item" onclick="togglePanel('equipment-control-panel')">
+    <div class="feature-icon">⚙️</div>
+    <div class="feature-label">设备控制</div>
+  </div>
+  <div class="feature-item" onclick="togglePanel('weather-panel')">
+    <div class="feature-icon">🌤️</div>
+    <div class="feature-label">天气预报</div>
+  </div>
+  <div class="feature-item" onclick="togglePanel('patrol-panel')">
+    <div class="feature-icon">🗺️</div>
+    <div class="feature-label">巡检任务</div>
+  </div>
+  <div class="feature-item" onclick="togglePanel('emergency-panel')">
+    <div class="feature-icon">🚨</div>
+    <div class="feature-label">应急预案</div>
+  </div>
+  <div class="feature-item" onclick="toggleAIAssistant()" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(124, 58, 237, 0.15)); border: 1px solid rgba(14, 165, 233, 0.3);">
+    <div class="feature-icon">🤖</div>
+    <div class="feature-label">AI助手</div>
+  </div>
+  <div class="feature-item" onclick="requestAIAnalysis()">
+    <div class="feature-icon">💡</div>
+    <div class="feature-label">智能分析</div>
+  </div>
+</div>
+
+<!-- AI智能助手面板 -->
+<div id="ai-assistant-panel" class="ai-assistant-panel hidden">
+  <div class="ai-assistant-header">
+    <div class="ai-assistant-title">
+      <span class="ai-assistant-icon">🤖</span>
+      <span>石化智能助手</span>
+    </div>
+    <div class="ai-assistant-status">
+      <span class="ai-assistant-status-dot"></span>
+      <span>实时在线</span>
+    </div>
+  </div>
+  <div class="ai-quick-actions">
+    <div class="ai-quick-action" onclick="sendQuickAIMessage('分析当前传感器数据')">📊 分析当前数据</div>
+    <div class="ai-quick-action" onclick="sendQuickAIMessage('检查告警原因')">⚠️ 检查告警</div>
+    <div class="ai-quick-action" onclick="sendQuickAIMessage('给出优化建议')">💡 获取建议</div>
+    <div class="ai-quick-action" onclick="sendQuickAIMessage('模拟结果分析')">🔍 分析模拟</div>
+  </div>
+  <div class="ai-assistant-messages" id="ai-messages">
+    <div class="ai-assistant-message ai">
+      你好！我是石化智能助手。我可以帮你分析传感器数据、解释告警原因、给出优化建议。点击下方快捷操作或直接输入问题开始吧！
+    </div>
+  </div>
+  <div class="ai-assistant-input-area">
+    <input type="text" class="ai-assistant-input" id="ai-input" placeholder="输入你的问题..." onkeypress="handleAIInputKeypress(event)">
+    <button class="ai-assistant-send-btn" onclick="sendAIMessage()">发送</button>
+  </div>
+</div>
+
+<div class="bg-grid"></div>
+
+<div class="container">
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+      <div class="title-group">
+        <h1>石化厂区全场景北斗/多传感器融合主动感知识别与定位系统</h1>
+        <p>XA-202617 · 实时监控 · 智能分析 · 精准定位</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span class="status-text" id="connectionStatus">系统运行正常</span>
+      </div>
+      <div class="time-display" id="timeDisplay">--:--:--</div>
+      <div class="nav-controls">
+        <button class="nav-btn warning" id="simulate-btn" onclick="toggleSimulation()">
+          <svg viewBox="0 0 24 24">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13h-3v3c0 .55-.45 1-1 1s-1-.45-1-1v-3H6c-.55 0-1-.45-1-1s.45-1 1-1h3V8c0-.55.45-1 1-1s1 .45 1 1v3h3c.55 0 1 .45 1 1s-.45 1-1 1z"/>
+          </svg>
+          模拟异常场景
+        </button>
+        <button class="nav-btn active" onclick="toggleView('monitor')">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l-4-2.18L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+          </svg>
+          实时监控
+        </button>
+        <button class="nav-btn" onclick="toggleView('analytics')">
+          <svg viewBox="0 0 24 24">
+            <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
+          </svg>
+          数据分析
+        </button>
+        <button class="nav-btn secondary" onclick="switchToMimo()">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+          返回AI系统
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path>
+          </svg>
+          传感器监控
+        </div>
+        <span style="font-size:11px;color:var(--text-muted)">15 个在线</span>
+      </div>
+      <div class="panel-content">
+        <div class="nav-tabs">
+          <div class="nav-tab active" onclick="switchSensorTab(event, 'all')">全部传感器</div>
+          <div class="nav-tab" onclick="switchSensorTab(event, 'gas')">气体检测</div>
+          <div class="nav-tab" onclick="switchSensorTab(event, 'env')">环境监测</div>
+        </div>
+        <div class="sensor-list" id="sensorList"></div>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <div class="map-header">
+        <div class="panel-title">
+          <svg viewBox="0 0 24 24">
+            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"></path>
+          </svg>
+          厂区全景地图
+        </div>
+        <div class="map-controls">
+          <button class="map-btn active" onclick="toggleLayer('personnel')" id="btn-personnel">人员</button>
+          <button class="map-btn active" onclick="toggleLayer('equipment')" id="btn-equipment">设备</button>
+          <button class="map-btn active" onclick="toggleLayer('beacon')" id="btn-beacon">信标</button>
+          <button class="map-btn" onclick="toggleLayer('zones')" id="btn-zones">区域</button>
+        </div>
+      </div>
+      <div class="map-viewport" id="mapViewport">
+        <svg class="map-svg" id="mapSvg" viewBox="0 0 1400 900" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="towerGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#64748b;stop-opacity:0.6" />
+              <stop offset="100%" style="stop-color:#475569;stop-opacity:0.3" />
+            </linearGradient>
+            <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+              <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(148,163,184,0.08)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          
+          <rect width="1400" height="900" fill="url(#grid)"></rect>
+          
+          <path class="road" d="M0 450 H1400"></path>
+          <path class="road-secondary" d="M700 0 V900"></path>
+          <path class="road-secondary" d="M200 0 V350"></path>
+          <path class="road-secondary" d="M1200 550 V900"></path>
+          <path class="road-secondary" d="M0 250 H350"></path>
+          <path class="road-secondary" d="M1050 650 H1400"></path>
+          
+          <polygon class="zone danger" id="zone1" points="50,50 450,50 450,320 50,320" onclick="selectZone(1, '炼化一区')"></polygon>
+          <text class="zone-label" x="250" y="180" text-anchor="middle" font-size="14" font-weight="600">炼化一区</text>
+          <text class="zone-label" x="250" y="200" text-anchor="middle" font-size="10">催化裂化装置</text>
+          
+          <polygon class="zone warning" id="zone2" points="500,50 900,50 900,320 500,320" onclick="selectZone(2, '炼化二区')"></polygon>
+          <text class="zone-label" x="700" y="180" text-anchor="middle" font-size="14" font-weight="600">炼化二区</text>
+          <text class="zone-label" x="700" y="200" text-anchor="middle" font-size="10">加氢裂化装置</text>
+          
+          <polygon class="zone danger" id="zone3" points="950,50 1350,50 1350,320 950,320" onclick="selectZone(3, '储罐区')"></polygon>
+          <text class="zone-label" x="1150" y="180" text-anchor="middle" font-size="14" font-weight="600">储罐区</text>
+          <text class="zone-label" x="1150" y="200" text-anchor="middle" font-size="10">高危区域</text>
+          
+          <polygon class="zone" id="zone4" points="50,370 400,370 400,550 50,550" onclick="selectZone(4, '中央控制室')"></polygon>
+          <text class="zone-label" x="225" y="460" text-anchor="middle" font-size="14" font-weight="600">中央控制室</text>
+          
+          <polygon class="zone" id="zone5" points="450,370 900,370 900,550 450,550" onclick="selectZone(5, '生产装置区')"></polygon>
+          <text class="zone-label" x="675" y="460" text-anchor="middle" font-size="14" font-weight="600">生产装置区</text>
+          
+          <polygon class="zone warning" id="zone6" points="950,370 1350,370 1350,550 950,550" onclick="selectZone(6, '装卸区')"></polygon>
+          <text class="zone-label" x="1150" y="460" text-anchor="middle" font-size="14" font-weight="600">装卸区</text>
+          
+          <polygon class="zone" id="zone7" points="50,600 550,600 550,850 50,850" onclick="selectZone(7, '维修车间')"></polygon>
+          <text class="zone-label" x="300" y="725" text-anchor="middle" font-size="14" font-weight="600">维修车间 & 备品仓库</text>
+          
+          <polygon class="zone" id="zone8" points="600,600 1350,600 1350,850 600,850" onclick="selectZone(8, '办公区')"></polygon>
+          <text class="zone-label" x="975" y="725" text-anchor="middle" font-size="14" font-weight="600">办公楼 & 食堂 & 宿舍</text>
+          
+          <rect class="building" x="100" y="100" width="120" height="80" rx="4"></rect>
+          <rect class="building" x="260" y="100" width="100" height="80" rx="4"></rect>
+          <rect class="building" x="100" y="220" width="150" height="70" rx="4"></rect>
+          
+          <rect class="tower" x="550" y="100" width="140" height="90" rx="6"></rect>
+          <rect class="tower" x="720" y="100" width="120" height="90" rx="6"></rect>
+          <rect class="tower" x="550" y="220" width="150" height="70" rx="6"></rect>
+          
+          <circle class="tank" cx="1020" cy="140" r="45"></circle>
+          <circle class="tank" cx="1120" cy="140" r="45"></circle>
+          <circle class="tank" cx="1220" cy="140" r="45"></circle>
+          <circle class="tank" cx="1020" cy="250" r="45"></circle>
+          <circle class="tank" cx="1120" cy="250" r="45"></circle>
+          <circle class="tank" cx="1220" cy="250" r="45"></circle>
+          
+          <rect class="building" x="100" y="400" width="250" height="110" rx="6"></rect>
+          
+          <rect class="building" x="500" y="400" width="140" height="80" rx="4"></rect>
+          <rect class="building" x="660" y="400" width="100" height="80" rx="4"></rect>
+          <rect class="building" x="780" y="400" width="80" height="80" rx="4"></rect>
+          
+          <rect class="building" x="1000" y="400" width="120" height="70" rx="4"></rect>
+          <rect class="building" x="1150" y="400" width="100" height="70" rx="4"></rect>
+          
+          <rect class="building" x="150" y="650" width="180" height="100" rx="6"></rect>
+          <rect class="building" x="360" y="700" width="150" height="100" rx="6"></rect>
+          
+          <rect class="building" x="700" y="650" width="140" height="90" rx="6"></rect>
+          <rect class="building" x="870" y="650" width="120" height="90" rx="6"></rect>
+          <rect class="building" x="1020" y="650" width="120" height="90" rx="6"></rect>
+          <rect class="building" x="1170" y="650" width="120" height="90" rx="6"></rect>
+          
+          <g id="personnelLayer"></g>
+          <g id="equipmentLayer"></g>
+          <g id="beaconLayer"></g>
+        </svg>
+        
+        <div class="legend">
+          <div class="legend-title">图例</div>
+          <div class="legend-item">
+            <div class="legend-dot personnel"></div>
+            <span>人员定位</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot equipment"></div>
+            <span>设备追踪</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot beacon"></div>
+            <span>北斗信标</span>
+          </div>
+        </div>
+        
+        <div class="mini-map">
+          <svg viewBox="0 0 1400 900" width="100%" height="100%">
+            <rect width="1400" height="900" fill="rgba(15,23,42,0.9)"></rect>
+            <polygon fill="rgba(239,68,68,0.3)" points="50,50 450,50 450,320 50,320"></polygon>
+            <polygon fill="rgba(245,158,11,0.3)" points="500,50 900,50 900,320 500,320"></polygon>
+            <polygon fill="rgba(239,68,68,0.3)" points="950,50 1350,50 1350,320 950,320"></polygon>
+            <polygon fill="rgba(14,165,233,0.25)" points="50,370 400,370 400,550 50,550"></polygon>
+            <polygon fill="rgba(14,165,233,0.25)" points="450,370 900,370 900,550 450,550"></polygon>
+            <polygon fill="rgba(245,158,11,0.3)" points="950,370 1350,370 1350,550 950,550"></polygon>
+            <polygon fill="rgba(14,165,233,0.25)" points="50,600 550,600 550,850 50,850"></polygon>
+            <polygon fill="rgba(14,165,233,0.25)" points="600,600 1350,600 1350,850 600,850"></polygon>
+          </svg>
+        </div>
+        
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"></path>
+          </svg>
+          智能分析与告警
+        </div>
+      </div>
+      <div class="panel-content">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value primary" id="statPersonnel">0</div>
+            <div class="stat-label">在岗人员</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value success" id="statEquipment">0</div>
+            <div class="stat-label">设备在线</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value warning" id="statWarnings">0</div>
+            <div class="stat-label">预警数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value danger" id="statAlerts">0</div>
+            <div class="stat-label">告警数</div>
+          </div>
+        </div>
+
+        <div class="ai-section">
+          <div class="ai-header">
+            <div class="ai-avatar">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path>
+              </svg>
+            </div>
+            <div class="ai-info">
+              <h3>AI 智能分析助手</h3>
+              <p>基于大模型的石化场景分析</p>
+            </div>
+          </div>
+          <div class="ai-suggestions">
+            <div class="ai-suggestion" onclick="askAI('analyze')">
+              <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              分析当前厂区安全状况
+            </div>
+            <div class="ai-suggestion" onclick="askAI('personnel')">
+              <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              查询在岗人员分布
+            </div>
+            <div class="ai-suggestion" onclick="askAI('equipment')">
+              <svg viewBox="0 0 24 24"><path d="M19.77 7.23l-1.41-1.41c-.39-.39-1.02-.39-1.41 0l-2.12 2.12 1.41 1.41 2.12-2.12zM11 20.92V18h2v2.92c1.44-.47 2.5-1.87 2.5-3.42 0-1.09-.6-2.04-1.5-2.58v-2.35l5.11 5.11c.39.39 1.02.39 1.41 0l1.41-1.41c.39-.39.39-1.02 0-1.41L13.83 12H16.5c.55 0 1-.45 1-1V7h-1.5c0-.55-.45-1-1-1H9.5c-.55 0-1 .45-1 1V3H6c0 .55.45 1 1 1h2.67L11 4.93l-1.21-1.21c-.39-.39-1.02-.39-1.41 0L7.23 3.52c-.39.39-.39 1.02 0 1.41l1.85 1.85-1.41 1.41-1.85-1.85c-.39-.39-1.02-.39-1.41 0l-1.41 1.41c-.39.39-.39 1.02 0 1.41L5.07 9l-1.3 1.3c-.39.39-.39 1.02 0 1.41l1.41 1.41c.39.39 1.02.39 1.41 0l2.12-2.12-1.41-1.41-2.12 2.12zM8 15.51c-1.21.91-2 2.37-2 3.99 0 1.87 1.13 3.4 2.75 3.97v-.01.01 0 0 0 0V18h2v1.5c0 0 0-.01 0 0 1.62-.57 2.75-2.1 2.75-3.97 0-1.62-.79-3.08-2-3.99z"/></svg>
+              设备状态预测性维护
+            </div>
+            <div class="ai-suggestion" onclick="askAI('emergency')">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              应急预案生成
+            </div>
+            <div class="ai-suggestion" onclick="switchToMimoWithQuery()">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              去 AI 系统深入询问
+            </div>
+          </div>
+        </div>
+
+        <div class="alerts-section">
+          <div class="panel-title" style="margin-bottom:12px;font-size:14px;">
+            <svg viewBox="0 0 24 24" style="width:18px;height:18px;">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
+            </svg>
+            实时告警
+          </div>
+          <div id="alertsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const personnelData = [
+  { id: 'P001', name: '张三', role: '操作员', zone: '炼化一区', x: 250, y: 180, status: 'normal' },
+  { id: 'P002', name: '李四', role: '安全员', zone: '炼化二区', x: 650, y: 160, status: 'normal' },
+  { id: 'P003', name: '王五', role: '技术员', zone: '储罐区', x: 1050, y: 190, status: 'warning' },
+  { id: 'P004', name: '赵六', role: '工程师', zone: '中央控制室', x: 230, y: 460, status: 'normal' },
+  { id: 'P005', name: '钱七', role: '操作员', zone: '生产装置区', x: 620, y: 450, status: 'normal' },
+  { id: 'P006', name: '孙八', role: '装卸工', zone: '装卸区', x: 1080, y: 470, status: 'normal' },
+  { id: 'P007', name: '周九', role: '维修员', zone: '维修车间', x: 260, y: 720, status: 'normal' },
+  { id: 'P008', name: '吴十', role: '管理员', zone: '办公区', x: 820, y: 730, status: 'normal' },
+  { id: 'P009', name: '郑十一', role: '技术员', zone: '炼化二区', x: 750, y: 200, status: 'normal' },
+  { id: 'P010', name: '王十二', role: '操作员', zone: '生产装置区', x: 780, y: 480, status: 'normal' },
+];
+
+const equipmentData = [
+  { id: 'E001', name: '催化裂化装置 #1', type: '生产设备', zone: '炼化一区', x: 180, y: 150, status: 'online' },
+  { id: 'E002', name: '加氢裂化装置 #2', type: '生产设备', zone: '炼化二区', x: 600, y: 150, status: 'online' },
+  { id: 'E003', name: '原油储罐 #A3', type: '存储设备', zone: '储罐区', x: 1020, y: 190, status: 'warning' },
+  { id: 'E004', name: '泵组 #4', type: '输送设备', zone: '生产装置区', x: 550, y: 430, status: 'online' },
+  { id: 'E005', name: '起重机 #5', type: '吊装设备', zone: '装卸区', x: 1050, y: 450, status: 'online' },
+  { id: 'E006', name: '叉车 #6', type: '运输设备', zone: '维修车间', x: 380, y: 720, status: 'online' },
+  { id: 'E007', name: '精馏塔 #7', type: '生产设备', zone: '炼化二区', x: 760, y: 150, status: 'online' },
+];
+
+const beaconData = [
+  { id: 'B001', name: '北斗信标 #1', zone: '炼化一区', x: 250, y: 80 },
+  { id: 'B002', name: '北斗信标 #2', zone: '炼化二区', x: 700, y: 80 },
+  { id: 'B003', name: '北斗信标 #3', zone: '储罐区', x: 1150, y: 80 },
+  { id: 'B004', name: '北斗信标 #4', zone: '中央控制室', x: 225, y: 390 },
+  { id: 'B005', name: '北斗信标 #5', zone: '生产装置区', x: 675, y: 390 },
+  { id: 'B006', name: '北斗信标 #6', zone: '装卸区', x: 1150, y: 390 },
+  { id: 'B007', name: '北斗信标 #7', zone: '维修车间', x: 300, y: 620 },
+  { id: 'B008', name: '北斗信标 #8', zone: '办公区', x: 975, y: 620 },
+  { id: 'B009', name: '北斗信标 #9', zone: '炼化一区', x: 150, y: 280 },
+  { id: 'B010', name: '北斗信标 #10', zone: '炼化二区', x: 800, y: 280 },
+];
+
+const sensorsData = [
+  { id: 'S001', name: '气体探测器', zone: '储罐区', type: 'gas', values: { methane: '0.21%', co2: '0.32%' }, status: 'online' },
+  { id: 'S002', name: '温度传感器', zone: '炼化二区', type: 'temp', values: { temp: '78°C', target: '80°C' }, status: 'online' },
+  { id: 'S003', name: '压力变送器', zone: '炼化一区', type: 'pressure', values: { pressure: '2.45 MPa', trend: '↑' }, status: 'warning' },
+  { id: 'S004', name: '液位计', zone: '储罐区', type: 'level', values: { level: '78%', capacity: '100%' }, status: 'online' },
+  { id: 'S005', name: '振动传感器', zone: '生产装置区', type: 'vibration', values: { vib: '2.1 mm/s', status: '正常' }, status: 'online' },
+  { id: 'S006', name: '噪声监测', zone: '装卸区', type: 'noise', values: { noise: '72 dB', limit: '85 dB' }, status: 'online' },
+  { id: 'S007', name: '风速风向', zone: '全厂', type: 'wind', values: { wind: '3.2 m/s', dir: '东北' }, status: 'online' },
+  { id: 'S008', name: '可燃气体', zone: '炼化一区', type: 'combustible', values: { lel: '15%', status: '安全' }, status: 'online' },
+  { id: 'S009', name: '硫化氢检测', zone: '储罐区', type: 'gas', values: { h2s: '2.1 ppm', limit: '10 ppm' }, status: 'online' },
+  { id: 'S010', name: '氧气浓度', zone: '中央控制室', type: 'env', values: { o2: '20.8%', normal: '19.5-23.5%' }, status: 'online' },
+];
+
+const alertsData = [
+  { id: 'A001', level: 'warning', title: '压力异常警告', desc: '炼化一区反应釜压力波动', time: '10:23:45' },
+  { id: 'A002', level: 'warning', title: '人员靠近高危区', desc: '王五正在进入储罐区边界', time: '10:18:22' },
+  { id: 'A003', level: 'danger', title: '设备维护提醒', desc: '原油储罐#A3温度异常，建议检查', time: '10:05:11' },
+];
+
+function init() {
+  renderSensors();
+  renderPersonnel();
+  renderEquipment();
+  renderBeacons();
+  renderAlerts();
+  updateStats();
+  updateTime();
+  setInterval(updateTime, 1000);
+  setInterval(updatePositions, 3000);
+  setInterval(updateSensorValues, 5000);
+}
+
+function renderSensors(data) {
+  const container = document.getElementById('sensorList');
+  const displayData = data || sensorsData;
+  container.innerHTML = displayData.map(s => `
+    <div class="sensor-card">
+      <div class="sensor-top">
+        <div class="sensor-name">
+          <div class="sensor-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path>
+            </svg>
+          </div>
+          ${s.name}
+        </div>
+        <span class="sensor-status ${s.status}">${s.status === 'online' ? '在线' : s.status === 'warning' ? '注意' : '告警'}</span>
+      </div>
+      <div class="sensor-data">
+        ${Object.entries(s.values).map(([k, v]) => `
+          <div class="data-item">
+            <div class="data-label">${k === 'methane' ? '甲烷' : k === 'co2' ? 'CO₂' : k === 'temp' ? '温度' : k === 'target' ? '目标' : k === 'pressure' ? '压力' : k === 'trend' ? '趋势' : k === 'level' ? '液位' : k === 'capacity' ? '容量' : k === 'vib' ? '振动' : k === 'noise' ? '噪声' : k === 'limit' ? '限值' : k === 'wind' ? '风速' : k === 'dir' ? '风向' : k === 'lel' ? 'LEL' : k === 'h2s' ? '硫化氢' : k === 'o2' ? '氧气' : k}</div>
+            <div class="data-value ${s.status !== 'online' ? s.status : ''}">${v}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPersonnel() {
+  const container = document.getElementById('personnelLayer');
+  container.innerHTML = personnelData.map(p => `
+    <g class="personnel" data-id="${p.id}" onmouseenter="showPersonnelTooltip(event, '${p.id}')" onmouseleave="hideTooltip()" onclick="selectPersonnel('${p.id}')">
+      <circle class="personnel-ring" cx="${p.x}" cy="${p.y}" r="15"></circle>
+      <circle class="personnel-dot" cx="${p.x}" cy="${p.y}" r="8"></circle>
+      <text class="personnel-label" x="${p.x}" y="${p.y + 22}" text-anchor="middle">${p.name}</text>
+    </g>
+  `).join('');
+}
+
+function renderEquipment() {
+  const container = document.getElementById('equipmentLayer');
+  container.innerHTML = equipmentData.map(e => `
+    <g class="equipment" data-id="${e.id}" onmouseenter="showEquipmentTooltip(event, '${e.id}')" onmouseleave="hideTooltip()" onclick="selectEquipment('${e.id}')">
+      <rect class="equipment-shape" x="${e.x - 16}" y="${e.y - 16}" width="32" height="32" rx="6"></rect>
+      <text class="personnel-label" x="${e.x}" y="${e.y + 30}" text-anchor="middle">${e.name.split(' ')[0]}</text>
+    </g>
+  `).join('');
+}
+
+function renderBeacons() {
+  const container = document.getElementById('beaconLayer');
+  container.innerHTML = beaconData.map(b => `
+    <g class="beacon" data-id="${b.id}" onmouseenter="showBeaconTooltip(event, '${b.id}')" onmouseleave="hideTooltip()">
+      <polygon class="beacon-dot" points="${b.x},${b.y - 10} ${b.x + 8.66},${b.y + 5} ${b.x - 8.66},${b.y + 5}"></polygon>
+    </g>
+  `).join('');
+}
+
+function renderAlerts() {
+  const container = document.getElementById('alertsList');
+  container.innerHTML = alertsData.map(a => `
+    <div class="alert-item ${a.level}" onclick="sendAlertToAI(this)">
+      <div class="alert-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <h4>${a.title}</h4>
+        <p>${a.desc}</p>
+        <div class="alert-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function sendAlertToAI(alertElement) {
+  const title = alertElement.querySelector('h4').textContent;
+  const desc = alertElement.querySelector('p').textContent;
+  const level = alertElement.classList.contains('danger') ? '严重' : '警告';
+  
+  console.log('[Alert] Clicked alert:', title, level);
+  
+  // 构建查询内容
+  const query = `【告警处理请求】\n\n告警级别：${level}\n告警标题：${title}\n告警详情：${desc}\n\n请分析此告警的原因、可能影响范围，并提供详细的解决方案和处理建议。`;
+  
+  // 发送到AI系统查询
+  const encodedQuery = encodeURIComponent(query);
+  const targetUrl = `index.html?context=petrochemical&query=${encodedQuery}`;
+  
+  try {
+    window.location.href = targetUrl;
+  } catch (e) {
+    console.error('[Alert] Error navigating:', e);
+    window.location.replace(targetUrl);
+  }
+}
+
+function updateStats() {
+  document.getElementById('statPersonnel').textContent = personnelData.length;
+  document.getElementById('statEquipment').textContent = equipmentData.length;
+  document.getElementById('statWarnings').textContent = alertsData.filter(a => a.level === 'warning').length;
+  document.getElementById('statAlerts').textContent = alertsData.filter(a => a.level === 'danger').length;
+}
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('timeDisplay').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+function updatePositions() {
+  personnelData.forEach(p => {
+    p.x += (Math.random() - 0.5) * 20;
+    p.y += (Math.random() - 0.5) * 20;
+    p.x = Math.max(50, Math.min(1350, p.x));
+    p.y = Math.max(50, Math.min(850, p.y));
+  });
+  renderPersonnel();
+}
+
+function updateSensorValues() {
+  sensorsData.forEach(s => {
+    if (s.type === 'temp') {
+      s.values.temp = `${Math.round(75 + Math.random() * 10)}°C`;
+    } else if (s.type === 'pressure') {
+      s.values.pressure = `${(2.2 + Math.random() * 0.5).toFixed(1)} MPa`;
+    }
+  });
+  renderSensors();
+  
+  // 发送传感器数据到AI系统
+  sendUpdate('sensors', {
+    sensors: sensorsData,
+    personnel: personnelData,
+    equipment: equipmentData,
+    alerts: alertsData
+  });
+}
+
+function showPersonnelTooltip(event, id) {
+  const p = personnelData.find(x => x.id === id);
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `
+    <div class="tooltip-title">${p.name}</div>
+    <div class="tooltip-row"><span>工号</span><span>${p.id}</span></div>
+    <div class="tooltip-row"><span>岗位</span><span>${p.role}</span></div>
+    <div class="tooltip-row"><span>区域</span><span>${p.zone}</span></div>
+    <div class="tooltip-row"><span>状态</span><span style="color:${p.status === 'normal' ? 'var(--success)' : 'var(--warning)'}">${p.status === 'normal' ? '正常' : '注意'}</span></div>
+    <div class="tooltip-row"><span>定位精度</span><span>±0.5m</span></div>
+  `;
+  positionTooltip(event, tooltip);
+}
+
+function showEquipmentTooltip(event, id) {
+  const e = equipmentData.find(x => x.id === id);
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `
+    <div class="tooltip-title">${e.name}</div>
+    <div class="tooltip-row"><span>编号</span><span>${e.id}</span></div>
+    <div class="tooltip-row"><span>类型</span><span>${e.type}</span></div>
+    <div class="tooltip-row"><span>区域</span><span>${e.zone}</span></div>
+    <div class="tooltip-row"><span>状态</span><span style="color:${e.status === 'online' ? 'var(--success)' : 'var(--warning)'}">${e.status === 'online' ? '运行中' : '注意'}</span></div>
+  `;
+  positionTooltip(event, tooltip);
+}
+
+function showBeaconTooltip(event, id) {
+  const b = beaconData.find(x => x.id === id);
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `
+    <div class="tooltip-title">${b.name}</div>
+    <div class="tooltip-row"><span>状态</span><span style="color:var(--success)">正常</span></div>
+    <div class="tooltip-row"><span>信号强度</span><span>98%</span></div>
+  `;
+  positionTooltip(event, tooltip);
+}
+
+function positionTooltip(event, tooltip) {
+  const rect = event.target.getBoundingClientRect();
+  const mapViewport = document.getElementById('mapViewport');
+  const mapRect = mapViewport.getBoundingClientRect();
+  
+  tooltip.style.left = (rect.left - mapRect.left + 20) + 'px';
+  tooltip.style.top = (rect.top - mapRect.top + 20) + 'px';
+  tooltip.classList.add('visible');
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+function toggleLayer(layer) {
+  const layerElement = document.getElementById(layer + 'Layer');
+  const btn = document.getElementById('btn-' + layer);
+  
+  if (layerElement) {
+    if (layerElement.style.display === 'none') {
+      layerElement.style.display = 'block';
+      btn.classList.add('active');
+    } else {
+      layerElement.style.display = 'none';
+      btn.classList.remove('active');
+    }
+  }
+}
+
+function selectZone(zoneId, zoneName) {
+  alert('已选择区域: ' + zoneName);
+}
+
+function selectPersonnel(id) {
+  const p = personnelData.find(x => x.id === id);
+  alert('人员详情: ' + p.name + ' - ' + p.role);
+}
+
+function selectEquipment(id) {
+  const e = equipmentData.find(x => x.id === id);
+  alert('设备详情: ' + e.name + ' - ' + e.type);
+}
+
+function switchSensorTab(event, tab) {
+  console.log('[Sensor] Switching to tab:', tab);
+  
+  // 切换标签样式
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  if (event && event.target) {
+    event.target.classList.add('active');
+  }
+  
+  // 根据标签过滤传感器
+  let filteredSensors = sensorsData;
+  
+  if (tab === 'gas') {
+    filteredSensors = sensorsData.filter(s => ['gas', 'combustible'].includes(s.type));
+  } else if (tab === 'env') {
+    filteredSensors = sensorsData.filter(s => ['temp', 'noise', 'wind', 'env', 'level'].includes(s.type));
+  }
+  
+  // 重新渲染传感器列表
+  const container = document.getElementById('sensorList');
+  if (container) {
+    container.innerHTML = filteredSensors.map(s => `
+      <div class="sensor-card">
+        <div class="sensor-top">
+          <div class="sensor-name">
+            <div class="sensor-icon">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path>
+              </svg>
+            </div>
+            ${s.name}
+          </div>
+          <span class="sensor-status ${s.status}">${s.status === 'online' ? '在线' : s.status === 'warning' ? '注意' : '告警'}</span>
+        </div>
+        <div class="sensor-data">
+          ${Object.entries(s.values).map(([k, v]) => `
+            <div class="data-item">
+              <div class="data-label">${k === 'methane' ? '甲烷' : k === 'co2' ? 'CO₂' : k === 'temp' ? '温度' : k === 'target' ? '目标' : k === 'pressure' ? '压力' : k === 'trend' ? '趋势' : k === 'level' ? '液位' : k === 'capacity' ? '容量' : k === 'vib' ? '振动' : k === 'noise' ? '噪声' : k === 'limit' ? '限值' : k === 'wind' ? '风速' : k === 'dir' ? '风向' : k === 'lel' ? 'LEL' : k === 'h2s' ? '硫化氢' : k === 'o2' ? '氧气' : k}</div>
+              <div class="data-value ${s.status !== 'online' ? s.status : ''}">${v}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    console.error('[Sensor] sensorList container not found');
+  }
+}
+
+function askAI(type) {
+  console.log('[askAI] Called with type:', type);
+  
+  const queries = {
+    analyze: '基于以下石化厂区实时数据，分析当前安全状况：\n\n',
+    personnel: '基于以下在岗人员分布数据，分析人员配置情况：\n\n',
+    equipment: '基于以下设备状态数据，分析设备运行状况：\n\n',
+    emergency: '基于以下石化厂区实时数据，生成应急预案：\n\n'
+  };
+  
+  let query = queries[type];
+  
+  if (!query) {
+    console.error('[askAI] Invalid type:', type);
+    alert('无效的分析类型');
+    return;
+  }
+  
+  try {
+    if (type === 'analyze' || type === 'emergency') {
+      query += `【传感器数据】\n`;
+      sensorsData.forEach(s => {
+        const values = Object.entries(s.values).map(([k, v]) => `${k}: ${v}`).join(', ');
+        query += `- ${s.name}(${s.zone}): ${values} [${s.status}]\n`;
+      });
+      query += `\n【人员分布】\n`;
+      const zoneStats = {};
+      personnelData.forEach(p => {
+        zoneStats[p.zone] = (zoneStats[p.zone] || 0) + 1;
+      });
+      Object.entries(zoneStats).forEach(([zone, count]) => {
+        query += `- ${zone}: ${count}人\n`;
+      });
+      query += `\n【设备状态】\n`;
+      equipmentData.forEach(e => {
+        query += `- ${e.name}: ${e.status}\n`;
+      });
+      if (alertsData.length > 0) {
+        query += `\n【当前告警】\n`;
+        alertsData.forEach(a => {
+          query += `- [${a.level === 'danger' ? '严重' : '警告'}] ${a.title}: ${a.desc}\n`;
+        });
+      }
+    } else if (type === 'personnel') {
+      const zoneStats = {};
+      personnelData.forEach(p => {
+        zoneStats[p.zone] = (zoneStats[p.zone] || 0) + 1;
+      });
+      query += `当前在岗人员：${personnelData.length}人\n\n各区域分布：\n`;
+      Object.entries(zoneStats).forEach(([zone, count]) => {
+        query += `- ${zone}: ${count}人\n`;
+      });
+      query += `\n详细名单：\n`;
+      personnelData.forEach(p => {
+        query += `- ${p.name} (${p.id}): ${p.zone} - ${p.status}\n`;
+      });
+    } else if (type === 'equipment') {
+      query += `当前在线设备：${equipmentData.length}台\n\n设备状态详情：\n`;
+      equipmentData.forEach(e => {
+        query += `- ${e.name}(${e.id}): ${e.status}\n`;
+        if (e.temp) query += `  温度: ${e.temp}°C\n`;
+        if (e.pressure) query += `  压力: ${e.pressure} MPa\n`;
+        if (e.runTime) query += `  运行时长: ${e.runTime}\n`;
+      });
+    }
+    
+    console.log('[askAI] Generated query (first 100 chars):', query.substring(0, 100));
+    
+    if (query) {
+      // 使用安全的编码方法，处理特殊字符
+      let encodedQuery = '';
+      try {
+        encodedQuery = encodeURIComponent(query);
+      } catch (e) {
+        console.warn('[askAI] encodeURIComponent failed, using fallback');
+        // 备用编码方法
+        encodedQuery = query
+          .replace(/[^\x00-\xFF]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+          .replace(/[!"#$%&'()*+,/:;<=>?@[\\\]^`{|}~]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+      }
+      
+      const targetUrl = `index.html?context=petrochemical&query=${encodedQuery}`;
+      console.log('[askAI] Navigating to:', targetUrl.substring(0, 100) + '...');
+      
+      try {
+        window.location.href = targetUrl;
+      } catch (e) {
+        console.error('[askAI] Error navigating with href:', e);
+        window.location.replace(targetUrl);
+      }
+    }
+  } catch (e) {
+    console.error('[askAI] Unexpected error:', e);
+    alert('切换到AI系统时发生错误，请重试');
+  }
+}
+
+function switchToMimo() {
+  console.log('Switching to Mimo AI system...');
+  try {
+    window.location.href = 'index.html';
+  } catch (e) {
+    console.error('Error switching to Mimo:', e);
+    // 备用方案
+    window.location.replace('index.html');
+  }
+}
+
+function switchToMimoWithQuery() {
+  console.log('Switching to Mimo AI system with query...');
+  try {
+    window.location.href = 'index.html?context=petrochemical';
+  } catch (e) {
+    console.error('Error switching to Mimo:', e);
+    window.location.replace('index.html?context=petrochemical');
+  }
+}
+
+// =====================================
+// WebSocket 客户端 - 实时数据同步
+// =====================================
+let socket = null;
+let isConnected = false;
+let aiAnalysisCallback = null;
+
+function connectWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;
+  
+  socket = io(wsUrl, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 10
+  });
+  
+  socket.on('connect', () => {
+    console.log('Connected to server via WebSocket');
+    isConnected = true;
+    
+    // 加入石化系统房间
+    socket.emit('join', { room: 'petrochemical_room' });
+    
+    // 更新连接状态
+    updateConnectionStatus(true);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+    isConnected = false;
+    updateConnectionStatus(false);
+  });
+  
+  socket.on('connected', (data) => {
+    console.log('Server confirmed connection:', data);
+  });
+  
+  socket.on('joined', (data) => {
+    console.log('Joined room:', data.room);
+  });
+  
+  socket.on('ai_command', (command) => {
+    console.log('Received AI command:', command);
+    executeAICommand(command);
+  });
+  
+  socket.on('ai_analysis', (analysis) => {
+    console.log('Received AI analysis:', analysis);
+    displayAIAnalysis(analysis);
+  });
+  
+  socket.on('petrochemical_state', (state) => {
+    console.log('Received petrochemical state:', state);
+    // 更新本地数据
+    if (state.personnel) personnelData = state.personnel;
+    if (state.equipment) equipmentData = state.equipment;
+    if (state.sensors) sensorsData = state.sensors;
+    if (state.alerts) alertsData = state.alerts;
+    
+    // 重新渲染
+    renderPersonnel();
+    renderEquipment();
+    renderSensors();
+    renderAlerts();
+    updateStats();
+  });
+  
+  socket.on('update_ack', (data) => {
+    console.log('Update acknowledged:', data);
+  });
+}
+
+function updateConnectionStatus(connected) {
+  const statusBadge = document.querySelector('.status-badge');
+  const statusText = statusBadge.querySelector('.status-text');
+  const statusDot = statusBadge.querySelector('.status-dot');
+  
+  if (connected) {
+    statusBadge.style.background = 'rgba(34, 197, 94, 0.1)';
+    statusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+    statusText.textContent = '系统运行正常 · 已同步';
+    statusText.style.color = 'var(--success)';
+    statusDot.style.background = 'var(--success)';
+  } else {
+    statusBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+    statusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+    statusText.textContent = '连接中断';
+    statusText.style.color = 'var(--danger)';
+    statusDot.style.background = 'var(--danger)';
+  }
+}
+
+function toggleView(view) {
+  const navBtns = document.querySelectorAll('.nav-btn');
+  navBtns.forEach(btn => btn.classList.remove('active'));
+  
+  const activeBtn = document.querySelector(`.nav-btn[onclick="toggleView('${view}')"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
+  
+  const grid = document.querySelector('.grid');
+  const analyticsPanel = document.getElementById('analyticsPanel');
+  
+  if (view === 'analytics') {
+    // 切换到数据分析视图
+    grid.style.opacity = '0.3';
+    grid.style.pointerEvents = 'none';
+    
+    if (!analyticsPanel) {
+      createAnalyticsPanel();
+    } else {
+      analyticsPanel.style.display = 'block';
+    }
+  } else {
+    // 切换到实时监控视图
+    grid.style.opacity = '1';
+    grid.style.pointerEvents = 'auto';
+    
+    if (analyticsPanel) {
+      analyticsPanel.style.display = 'none';
+    }
+  }
+}
+
+function createAnalyticsPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'analyticsPanel';
+  panel.className = 'analytics-panel';
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        数据分析面板
+        <span class="live-badge">LIVE</span>
+      </div>
+      <button class="close-btn" onclick="toggleView('monitor')">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="panel-content">
+      <!-- 实时状态概览 -->
+      <div class="overview-section">
+        <div class="overview-item">
+          <div class="overview-icon temperature">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-1v1h1v2h-1v1h1v2h-2V5z"/></svg>
+          </div>
+          <div class="overview-content">
+            <div class="overview-value" id="avg-temp">82.5°C</div>
+            <div class="overview-label">平均温度</div>
+            <div class="overview-trend up">↑ 2.3%</div>
+          </div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-icon pressure">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+          </div>
+          <div class="overview-content">
+            <div class="overview-value" id="avg-pressure">2.5 MPa</div>
+            <div class="overview-label">平均压力</div>
+            <div class="overview-trend down">↓ 1.2%</div>
+          </div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-icon gas">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+          </div>
+          <div class="overview-content">
+            <div class="overview-value" id="gas-level">0.15%</div>
+            <div class="overview-label">气体浓度</div>
+            <div class="overview-trend stable">→ 稳定</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 传感器数据趋势图 -->
+      <div class="analytics-card full-width">
+        <h4>📈 传感器数据趋势（最近24小时）</h4>
+        <div class="trend-chart" id="trendChart">
+          <div class="chart-y-axis">
+            <span>100%</span>
+            <span>75%</span>
+            <span>50%</span>
+            <span>25%</span>
+            <span>0%</span>
+          </div>
+          <div class="chart-area">
+            <svg class="trend-line" viewBox="0 0 400 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="tempGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:#ef4444;stop-opacity:0.3"/>
+                  <stop offset="100%" style="stop-color:#ef4444;stop-opacity:0"/>
+                </linearGradient>
+                <linearGradient id="pressureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3"/>
+                  <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0"/>
+                </linearGradient>
+              </defs>
+              <!-- 温度曲线 -->
+              <path class="line-temp" d="M0,60 Q50,55 100,50 T200,45 T300,55 T400,40" fill="none" stroke="#ef4444" stroke-width="2"/>
+              <path class="area-temp" d="M0,60 Q50,55 100,50 T200,45 T300,55 T400,40 L400,100 L0,100 Z" fill="url(#tempGradient)"/>
+              <!-- 压力曲线 -->
+              <path class="line-pressure" d="M0,40 Q50,45 100,42 T200,50 T300,45 T400,48" fill="none" stroke="#3b82f6" stroke-width="2"/>
+              <path class="area-pressure" d="M0,40 Q50,45 100,42 T200,50 T300,45 T400,48 L400,100 L0,100 Z" fill="url(#pressureGradient)"/>
+            </svg>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="dot red"></span>温度</span>
+              <span class="legend-item"><span class="dot blue"></span>压力</span>
+            </div>
+          </div>
+          <div class="chart-x-axis">
+            <span>00:00</span>
+            <span>06:00</span>
+            <span>12:00</span>
+            <span>18:00</span>
+            <span>24:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 传感器状态分布 -->
+      <div class="analytics-card">
+        <h4>📊 传感器状态</h4>
+        <div class="sensor-status-dist">
+          <div class="status-bar">
+            <div class="status-segment online" id="sensor-online" style="width: 70%;"></div>
+            <div class="status-segment warning" id="sensor-warning" style="width: 20%;"></div>
+            <div class="status-segment offline" id="sensor-offline" style="width: 10%;"></div>
+          </div>
+          <div class="status-labels">
+            <span class="status-label"><span class="dot green"></span>在线 <span id="online-count">7</span>个</span>
+            <span class="status-label"><span class="dot yellow"></span>注意 <span id="warning-count">2</span>个</span>
+            <span class="status-label"><span class="dot gray"></span>离线 <span id="offline-count">1</span>个</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 设备运行效率 -->
+      <div class="analytics-card">
+        <h4>⚙️ 设备运行效率</h4>
+        <div class="efficiency-detail">
+          <div class="efficiency-gauge">
+            <svg viewBox="0 0 120 70" class="gauge-svg">
+              <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#1e293b" stroke-width="10" stroke-linecap="round"/>
+              <path id="efficiency-arc" d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="url(#efficiencyGradient)" stroke-width="10" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="20"/>
+              <defs>
+                <linearGradient id="efficiencyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:#22c55e"/>
+                  <stop offset="50%" style="stop-color:#eab308"/>
+                  <stop offset="100%" style="stop-color:#ef4444"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="gauge-value" id="efficiency-value">87%</div>
+          </div>
+          <div class="equipment-list">
+            ${equipmentData.slice(0, 4).map(eq => `
+              <div class="equipment-item">
+                <span class="eq-name">${eq.name}</span>
+                <span class="eq-status ${eq.status}">${eq.status === 'online' ? '运行中' : eq.status === 'standby' ? '待机' : '故障'}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- 告警时间线 -->
+      <div class="analytics-card">
+        <h4>⚠️ 告警时间线</h4>
+        <div class="alert-timeline" id="alertTimeline">
+          ${alertsData.slice(0, 5).map((alert, index) => `
+            <div class="timeline-item ${alert.level}">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <div class="timeline-title">${alert.title}</div>
+                <div class="timeline-time">${alert.time}</div>
+              </div>
+            </div>
+          `).join('') || '<div class="no-alerts">暂无告警</div>'}
+        </div>
+      </div>
+
+      <!-- 区域安全评分 -->
+      <div class="analytics-card full-width">
+        <h4>🎯 区域安全评分</h4>
+        <div class="zone-scores">
+          <div class="zone-score-item">
+            <div class="zone-name">催化裂化区</div>
+            <div class="score-bar">
+              <div class="score-fill high" style="width: 92%;"></div>
+            </div>
+            <div class="score-value">92分</div>
+          </div>
+          <div class="zone-score-item">
+            <div class="zone-name">加氢反应区</div>
+            <div class="score-bar">
+              <div class="score-fill medium" style="width: 78%;"></div>
+            </div>
+            <div class="score-value">78分</div>
+          </div>
+          <div class="zone-score-item">
+            <div class="zone-name">储罐区</div>
+            <div class="score-bar">
+              <div class="score-fill high" style="width: 95%;"></div>
+            </div>
+            <div class="score-value">95分</div>
+          </div>
+          <div class="zone-score-item">
+            <div class="zone-name">泵房区</div>
+            <div class="score-bar">
+              <div class="score-fill low" style="width: 65%;"></div>
+            </div>
+            <div class="score-value">65分</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI分析按钮 -->
+      <button class="analyze-btn" onclick="askAI('analyze')">
+        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        使用AI深度分析全部数据
+      </button>
+    </div>
+  `;
+  
+  document.querySelector('.container').appendChild(panel);
+  
+  // 启动数据更新定时器
+  startAnalyticsDataUpdate();
+}
+
+// 定时更新分析数据
+let analyticsUpdateInterval = null;
+function startAnalyticsDataUpdate() {
+  if (analyticsUpdateInterval) clearInterval(analyticsUpdateInterval);
+  
+  analyticsUpdateInterval = setInterval(() => {
+    updateAnalyticsData();
+  }, 3000);
+}
+
+function updateAnalyticsData() {
+  // 更新平均值
+  const tempSensor = sensorsData.find(s => s.type === 'temp');
+  const pressureSensor = sensorsData.find(s => s.type === 'pressure');
+  const gasSensor = sensorsData.find(s => s.type === 'gas');
+  
+  if (tempSensor && document.getElementById('avg-temp')) {
+    document.getElementById('avg-temp').textContent = tempSensor.values.temp;
+  }
+  if (pressureSensor && document.getElementById('avg-pressure')) {
+    document.getElementById('avg-pressure').textContent = pressureSensor.values.pressure;
+  }
+  if (gasSensor && document.getElementById('gas-level')) {
+    document.getElementById('gas-level').textContent = gasSensor.values.gas;
+  }
+  
+  // 更新传感器状态分布
+  const online = sensorsData.filter(s => s.status === 'online').length;
+  const warning = sensorsData.filter(s => s.status === 'warning').length;
+  const total = sensorsData.length;
+  
+  if (document.getElementById('sensor-online')) {
+    document.getElementById('sensor-online').style.width = `${(online/total)*100}%`;
+    document.getElementById('sensor-warning').style.width = `${(warning/total)*100}%`;
+    document.getElementById('sensor-offline').style.width = `${((total-online-warning)/total)*100}%`;
+    document.getElementById('online-count').textContent = online;
+    document.getElementById('warning-count').textContent = warning;
+    document.getElementById('offline-count').textContent = total - online - warning;
+  }
+  
+  // 更新设备效率
+  const onlineEquip = equipmentData.filter(e => e.status === 'online').length;
+  const efficiency = Math.round((onlineEquip / equipmentData.length) * 100);
+  if (document.getElementById('efficiency-value')) {
+    document.getElementById('efficiency-value').textContent = `${efficiency}%`;
+    const arc = document.getElementById('efficiency-arc');
+    if (arc) {
+      arc.style.strokeDashoffset = 157 - (157 * efficiency / 100);
+    }
+  }
+  
+  // 更新告警时间线
+  const timeline = document.getElementById('alertTimeline');
+  if (timeline) {
+    timeline.innerHTML = alertsData.slice(0, 5).map(alert => `
+      <div class="timeline-item ${alert.level}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">${alert.title}</div>
+          <div class="timeline-time">${alert.time}</div>
+        </div>
+      </div>
+    `).join('') || '<div class="no-alerts">暂无告警</div>';
+  }
+}
+
+function sendUpdate(type, data) {
+  if (socket && isConnected) {
+    socket.emit('petrochemical_update', { type, data });
+  }
+}
+
+function executeAICommand(command) {
+  console.log('Executing AI command:', command);
+  
+  const cmd = command.command;
+  const params = command.params || {};
+  
+  switch(cmd) {
+    case 'highlight_zone':
+      highlightZone(params.zoneId);
+      break;
+    case 'highlight_person':
+      highlightPerson(params.personId);
+      break;
+    case 'highlight_equipment':
+      highlightEquipment(params.equipmentId);
+      break;
+    case 'show_recommendation':
+      showAIRecommendation(params);
+      break;
+    case 'focus_camera':
+      focusOnArea(params.area);
+      break;
+    case 'increase_sampling':
+      increaseSensorSampling(params.sensorId);
+      break;
+    default:
+      console.log('Unknown command:', cmd);
+  }
+}
+
+function highlightZone(zoneId) {
+  const zone = document.getElementById('zone' + zoneId);
+  if (zone) {
+    zone.style.strokeWidth = '4';
+    zone.style.fill = 'rgba(124, 58, 237, 0.2)';
+    
+    setTimeout(() => {
+      zone.style.strokeWidth = '2';
+      zone.style.fill = '';
+    }, 3000);
+  }
+}
+
+function highlightPerson(personId) {
+  const person = document.querySelector(`[data-id="${personId}"]`);
+  if (person) {
+    person.querySelector('.personnel-dot').style.fill = '#7c3aed';
+    person.querySelector('.personnel-dot').style.filter = 'drop-shadow(0 0 12px #7c3aed)';
+    
+    setTimeout(() => {
+      person.querySelector('.personnel-dot').style.fill = 'var(--primary)';
+      person.querySelector('.personnel-dot').style.filter = 'drop-shadow(0 0 8px var(--primary))';
+    }, 5000);
+  }
+}
+
+function highlightEquipment(equipmentId) {
+  const equipment = document.querySelector(`[data-id="${equipmentId}"]`);
+  if (equipment) {
+    equipment.querySelector('.equipment-shape').style.fill = 'rgba(34, 197, 94, 0.4)';
+    equipment.querySelector('.equipment-shape').style.stroke = 'var(--success)';
+    
+    setTimeout(() => {
+      equipment.querySelector('.equipment-shape').style.fill = 'rgba(124, 58, 237, 0.25)';
+      equipment.querySelector('.equipment-shape').style.stroke = '#7c3aed';
+    }, 5000);
+  }
+}
+
+function showAIRecommendation(params) {
+  alert('AI 建议: ' + params.message);
+}
+
+function focusOnArea(area) {
+  console.log('Focusing camera on area:', area);
+}
+
+function increaseSensorSampling(sensorId) {
+  console.log('Increasing sampling for sensor:', sensorId);
+}
+
+function displayAIAnalysis(analysis) {
+  console.log('Displaying AI analysis:', analysis);
+  
+  // 创建分析结果面板
+  const analysisDiv = document.createElement('div');
+  analysisDiv.className = 'ai-analysis-panel';
+  analysisDiv.innerHTML = `
+    <div class="analysis-header">
+      <h3>AI 分析结果</h3>
+      <button onclick="this.parentElement.parentElement.remove()">关闭</button>
+    </div>
+    <div class="analysis-content">
+      <pre>${JSON.stringify(analysis, null, 2)}</pre>
+    </div>
+  `;
+  
+  document.body.appendChild(analysisDiv);
+  
+  // 3秒后自动消失
+  setTimeout(() => {
+    if (analysisDiv.parentElement) {
+      analysisDiv.remove();
+    }
+  }, 5000);
+}
+
+function sendToAI(data) {
+  if (socket && isConnected) {
+    socket.emit('ai_query', data);
+  } else {
+    console.log('WebSocket not connected, cannot send to AI');
+  }
+}
+
+function queryAI(query_type, target = null) {
+  sendToAI({ query_type, target });
+}
+
+// 模拟异常场景
+let simulationActive = false;
+let simulationInterval = null;
+let simulationHistory = [];
+
+function toggleSimulation() {
+  const btn = document.getElementById('simulate-btn');
+  if (simulationActive) {
+    stopSimulation();
+  } else {
+    startSimulation();
+  }
+}
+
+function startSimulation() {
+  simulationActive = true;
+  simulationHistory = [];
+  const btn = document.getElementById('simulate-btn');
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24">
+      <path d="M6 6h12v12H6z"/>
+    </svg>
+    停止模拟
+  `;
+  btn.classList.remove('warning');
+  btn.classList.add('danger');
+  
+  // 更新面板UI
+  updateSimulationPanelUI(true);
+  
+  // 添加模拟开始日志
+  addSimulationLog('info', '石化系统模拟已开始');
+  
+  // 立即触发第一个异常场景
+  triggerRandomScenario();
+  
+  // 设置定时器，每10-20秒随机触发新的异常
+  simulationInterval = setInterval(() => {
+    if (simulationActive && Math.random() > 0.3) {
+      triggerRandomScenario();
+    }
+  }, 15000);
+  
+  // 启动实时数据波动模拟
+  startDataFluctuation();
+}
+
+function stopSimulation() {
+  simulationActive = false;
+  if (simulationInterval) {
+    clearInterval(simulationInterval);
+    simulationInterval = null;
+  }
+  if (fluctuationInterval) {
+    clearInterval(fluctuationInterval);
+    fluctuationInterval = null;
+  }
+  
+  const btn = document.getElementById('simulate-btn');
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24">
+      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13h-3v3c0 .55-.45 1-1 1s-1-.45-1-1v-3H6c-.55 0-1-.45-1-1s.45-1 1-1h3V8c0-.55.45-1 1-1s1 .45 1 1v3h3c.55 0 1 .45 1 1s-.45 1-1 1z"/>
+    </svg>
+    模拟异常场景
+  `;
+  btn.classList.remove('danger');
+  btn.classList.add('warning');
+  
+  // 更新面板UI
+  updateSimulationPanelUI(false);
+  
+  addSimulationLog('info', '石化系统模拟已停止');
+}
+
+function updateSimulationPanelUI(isActive) {
+  const panel = document.getElementById('simulation-panel');
+  const statusBadge = document.getElementById('sim-status');
+  const statusDot = statusBadge.querySelector('.status-dot-pulse');
+  const statusText = document.getElementById('sim-status-text');
+  const btnText = document.getElementById('sim-btn-text');
+  const triggerBtn = document.getElementById('trigger-btn');
+  
+  if (isActive) {
+    panel.classList.remove('hidden');
+    statusBadge.classList.remove('inactive');
+    statusBadge.classList.add('active');
+    statusDot.style.display = 'inline-block';
+    statusText.textContent = '运行中';
+    btnText.textContent = '停止模拟';
+    triggerBtn.disabled = false;
+  } else {
+    panel.classList.add('hidden');
+    statusBadge.classList.remove('active');
+    statusBadge.classList.add('inactive');
+    statusDot.style.display = 'none';
+    statusText.textContent = '已停止';
+    btnText.textContent = '开始模拟';
+    triggerBtn.disabled = true;
+  }
+  
+  updateSimulationStats();
+}
+
+function updateSimulationStats() {
+  const countEl = document.getElementById('sim-count');
+  const alertsEl = document.getElementById('sim-alerts');
+  const severityEl = document.getElementById('sim-severity');
+  
+  // 触发次数
+  const dangerLogs = simulationHistory.filter(log => log.type === 'danger' || log.type === 'warning').length;
+  countEl.textContent = dangerLogs;
+  
+  // 活跃告警数
+  alertsEl.textContent = alertsData.length;
+  
+  // 最高等级
+  const dangerCount = alertsData.filter(a => a.level === 'danger').length;
+  const warningCount = alertsData.filter(a => a.level === 'warning').length;
+  
+  if (dangerCount > 0) {
+    severityEl.textContent = '危险';
+    severityEl.style.color = '#ef4444';
+  } else if (warningCount > 0) {
+    severityEl.textContent = '警告';
+    severityEl.style.color = '#f59e0b';
+  } else {
+    severityEl.textContent = '-';
+    severityEl.style.color = 'inherit';
+  }
+}
+
+let fluctuationInterval = null;
+function startDataFluctuation() {
+  if (fluctuationInterval) clearInterval(fluctuationInterval);
+  
+  fluctuationInterval = setInterval(() => {
+    if (!simulationActive) return;
+    
+    // 模拟传感器数据的微小波动
+    sensorsData.forEach(sensor => {
+      if (sensor.type === 'temp') {
+        const baseTemp = 82;
+        const fluctuation = (Math.random() - 0.5) * 4;
+        sensor.values.temp = `${(baseTemp + fluctuation).toFixed(1)}°C`;
+      } else if (sensor.type === 'pressure') {
+        const basePressure = 2.5;
+        const fluctuation = (Math.random() - 0.5) * 0.3;
+        sensor.values.pressure = `${(basePressure + fluctuation).toFixed(2)} MPa`;
+      } else if (sensor.type === 'gas') {
+        const baseGas = 0.15;
+        const fluctuation = (Math.random() - 0.5) * 0.1;
+        sensor.values.gas = `${(baseGas + fluctuation).toFixed(2)}%`;
+      } else if (sensor.type === 'noise') {
+        const baseNoise = 52;
+        const fluctuation = (Math.random() - 0.5) * 6;
+        sensor.values.noise = `${Math.round(baseNoise + fluctuation)}dB`;
+      }
+    });
+    
+    renderSensors(sensorsData);
+  }, 3000);
+}
+
+const scenarios = [
+  {
+    name: '可燃气体泄漏',
+    level: 'danger',
+    severity: 9,
+    description: '催化裂化装置区域检测到高浓度可燃气体',
+    location: '催化裂化装置区',
+    effects: ['gas', 'temp'],
+    update: () => {
+      const gasSensor = sensorsData.find(s => s.id === 'gas-001');
+      if (gasSensor) {
+        gasSensor.values.gas = '3.8%';
+        gasSensor.status = 'danger';
+      }
+      // 级联效应：温度上升
+      const tempSensor = sensorsData.find(s => s.id === 'temp-001');
+      if (tempSensor) {
+        tempSensor.values.temp = '105°C';
+        tempSensor.status = 'warning';
+      }
+      addSimulationLog('danger', '危险：可燃气体浓度达到3.8%，超过安全阈值！');
+    }
+  },
+  {
+    name: '反应器温度异常',
+    level: 'warning',
+    severity: 7,
+    description: '加氢反应器核心区域温度接近阈值上限',
+    location: '加氢反应器',
+    effects: ['temp', 'pressure'],
+    update: () => {
+      const tempSensor = sensorsData.find(s => s.id === 'temp-001');
+      if (tempSensor) {
+        tempSensor.values.temp = '118°C';
+        tempSensor.status = 'warning';
+      }
+      // 级联效应：压力升高
+      const pressSensor = sensorsData.find(s => s.id === 'pressure-001');
+      if (pressSensor) {
+        pressSensor.values.pressure = '3.1 MPa';
+        pressSensor.values.trend = '↑';
+      }
+      addSimulationLog('warning', '警告：反应器温度达到118°C，接近上限阈值');
+    }
+  },
+  {
+    name: '管道压力波动',
+    level: 'warning',
+    severity: 6,
+    description: '主输送管道压力波动超出正常范围',
+    location: '主管道A段',
+    effects: ['pressure', 'flow'],
+    update: () => {
+      const pressSensor = sensorsData.find(s => s.id === 'pressure-001');
+      if (pressSensor) {
+        pressSensor.values.pressure = '2.9 MPa';
+        pressSensor.values.trend = '↑↓';
+      }
+      addSimulationLog('warning', '警告：管道压力波动异常，当前压力2.9MPa');
+    }
+  },
+  {
+    name: '关键设备故障',
+    level: 'danger',
+    severity: 8,
+    description: 'P-102B循环泵振动值超标，建议停机检查',
+    location: '泵房B区',
+    effects: ['equipment'],
+    update: () => {
+      const equipment = equipmentData.find(e => e.id === 'eq-002');
+      if (equipment) {
+        equipment.status = 'fault';
+        equipment.efficiency = '32%';
+      }
+      addSimulationLog('danger', '严重：P-102B循环泵振动超标，已自动降负荷运行');
+    }
+  },
+  {
+    name: '液位计异常',
+    level: 'warning',
+    severity: 5,
+    description: '储罐液位传感器读数异常波动',
+    location: '储罐区D-12',
+    effects: ['level'],
+    update: () => {
+      const levelSensor = sensorsData.find(s => s.id === 'level-001');
+      if (levelSensor) {
+        levelSensor.values.level = '87%';
+        levelSensor.status = 'warning';
+      }
+      addSimulationLog('warning', '警告：储罐D-12液位计数据异常，当前液位87%');
+    }
+  },
+  {
+    name: '有毒气体泄漏',
+    level: 'danger',
+    severity: 9,
+    description: '硫化氢检测仪报警，浓度超标',
+    location: '硫回收装置',
+    effects: ['gas', 'wind'],
+    update: () => {
+      const gasSensor = sensorsData.find(s => s.id === 'gas-003');
+      if (gasSensor) {
+        gasSensor.values.gas = '15ppm';
+        gasSensor.status = 'danger';
+      }
+      // 级联效应：风向变化
+      const windSensor = sensorsData.find(s => s.id === 'wind-001');
+      if (windSensor) {
+        windSensor.values.speed = '6.2m/s';
+        windSensor.values.direction = '西北风';
+      }
+      addSimulationLog('danger', '紧急：硫化氢浓度达到15ppm，已触发人员疏散预案！');
+    }
+  },
+  {
+    name: '电气系统异常',
+    level: 'warning',
+    severity: 7,
+    description: '配电室温度过高，UPS备用电源切换',
+    location: '配电室A',
+    effects: ['temp', 'equipment'],
+    update: () => {
+      const tempSensor = sensorsData.find(s => s.id === 'temp-003');
+      if (tempSensor) {
+        tempSensor.values.temp = '42°C';
+        tempSensor.status = 'warning';
+      }
+      const equipment = equipmentData.find(e => e.id === 'eq-005');
+      if (equipment) {
+        equipment.status = 'standby';
+      }
+      addSimulationLog('warning', '警告：配电室温度42°C，UPS已自动切换到电池供电模式');
+    }
+  },
+  {
+    name: '环境噪声超标',
+    level: 'info',
+    severity: 3,
+    description: '压缩机运行噪声超出标准值',
+    location: '压缩机房',
+    effects: ['noise'],
+    update: () => {
+      const noiseSensor = sensorsData.find(s => s.id === 'noise-001');
+      if (noiseSensor) {
+        noiseSensor.values.noise = '88dB';
+        noiseSensor.status = 'warning';
+      }
+      addSimulationLog('info', '提示：压缩机房噪声达到88dB，建议作业人员佩戴防护耳罩');
+    }
+  }
+];
+
+function triggerRandomScenario() {
+  // 根据当前告警数量选择场景，避免重复
+  const activeAlertCount = alertsData.length;
+  let selectedScenario;
+  
+  if (activeAlertCount < 2) {
+    // 告警少时，随机选择严重场景
+    const severeScenarios = scenarios.filter(s => s.level === 'danger');
+    selectedScenario = severeScenarios[Math.floor(Math.random() * severeScenarios.length)] || 
+                      scenarios[Math.floor(Math.random() * scenarios.length)];
+  } else {
+    // 告警多时，选择较轻的场景
+    const mildScenarios = scenarios.filter(s => s.level !== 'danger');
+    selectedScenario = mildScenarios[Math.floor(Math.random() * mildScenarios.length)] || 
+                      scenarios[Math.floor(Math.random() * scenarios.length)];
+  }
+  
+  // 执行场景更新
+  selectedScenario.update();
+  
+  // 添加告警
+  alertsData.unshift({
+    id: `alert-sim-${Date.now()}`,
+    title: selectedScenario.name,
+    desc: selectedScenario.description,
+    level: selectedScenario.level,
+    location: selectedScenario.location,
+    time: new Date().toLocaleTimeString()
+  });
+  
+  // 渲染更新
+  renderSensors(sensorsData);
+  renderEquipment();
+  renderAlerts();
+  
+  // 更新模拟统计
+  updateSimulationStats();
+  
+  // 显示通知
+  showAlertNotification({
+    name: selectedScenario.name,
+    level: selectedScenario.level,
+    description: selectedScenario.description,
+    location: selectedScenario.location
+  });
+  
+  // 发送到AI系统
+  sendUpdate('simulation', {
+    scenario: selectedScenario.name,
+    level: selectedScenario.level,
+    location: selectedScenario.location,
+    description: selectedScenario.description
+  });
+  
+  // 如果是严重告警，显示智能预警横幅
+  if (selectedScenario.level === 'danger') {
+    checkAndShowSmartAlert('danger');
+  }
+}
+
+function addSimulationLog(type, message) {
+  const time = new Date().toLocaleTimeString();
+  simulationHistory.unshift({ type, message, time });
+  
+  // 保持历史记录不超过20条
+  if (simulationHistory.length > 20) {
+    simulationHistory.pop();
+  }
+  
+  // 更新日志显示
+  updateSimulationLogDisplay();
+}
+
+function updateSimulationLogDisplay() {
+  const logContainer = document.getElementById('simulation-log');
+  if (!logContainer) return;
+  
+  logContainer.innerHTML = simulationHistory.map(log => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:11px;">
+      <span style="color:#64748b;white-space:nowrap;">${log.time}</span>
+      <span style="width:6px;height:6px;border-radius:50%;background:${log.type === 'danger' ? '#ef4444' : log.type === 'warning' ? '#f59e0b' : '#22c55e'};margin-top:4px;flex-shrink:0;"></span>
+      <span style="color:#cbd5e1;">${log.message}</span>
+    </div>
+  `).join('');
+}
+
+function showAlertNotification(scenario) {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${scenario.level === 'danger' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'};
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    animation: slideDown 0.3s ease;
+    max-width: 500px;
+  `;
+
+  notification.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span style="font-size: 16px; font-weight: 600;">⚠️ ${scenario.name}模拟已触发</span>
+    </div>
+    <p style="margin-bottom: 12px; opacity: 0.9;">请点击下方按钮切换到AI系统进行分析</p>
+    <div style="display: flex; gap: 12px;">
+      <button onclick="this.closest('div').remove();" style="flex: 1; padding: 8px 16px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: white; border-radius: 8px; cursor: pointer;">稍后处理</button>
+      <button onclick="switchToMimoWithAlert(); this.closest('div').remove();" style="flex: 2; padding: 8px 16px; background: white; color: ${scenario.level === 'danger' ? '#dc2626' : '#d97706'}; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">🚀 立即去AI系统分析</button>
+    </div>
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.style.animation = 'slideUp 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 8000);
+}
+
+function switchToMimoWithAlert() {
+  const latestAlert = alertsData[alertsData.length - 1];
+  const query = `【紧急告警分析】\n\n告警级别：${latestAlert.level === 'danger' ? '严重' : '警告'}\n告警标题：${latestAlert.title}\n告警描述：${latestAlert.desc}\n\n请分析此告警的：\n1. 可能原因\n2. 潜在风险\n3. 应急处理措施\n4. 长期优化建议`;
+  
+  try {
+    window.location.href = `index.html?context=petrochemical&query=${encodeURIComponent(query)}`;
+  } catch (e) {
+    console.error('Encoding error:', e);
+    window.location.href = `index.html?context=petrochemical`;
+  }
+}
+
+// 初始化WebSocket连接
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  connectWebSocket();
+  initFeatureMenu();
+});
+
+// 初始化功能菜单
+function initFeatureMenu() {
+  renderEquipmentControls();
+  updateWeatherDisplay();
+  updatePatrolTasks();
+}
+
+// 鼠标悬停底部时显示菜单
+document.addEventListener('mousemove', (event) => {
+  const menu = document.getElementById('feature-menu');
+  const windowHeight = window.innerHeight;
+  const mouseY = event.clientY;
+  
+  // 鼠标移动到底部区域时显示菜单
+  if (mouseY > windowHeight - 80) {
+    menu.classList.add('visible');
+  } else {
+    // 鼠标离开底部区域且不在菜单上时隐藏菜单
+    if (!menu.contains(event.target)) {
+      menu.classList.remove('visible');
+    }
+  }
+});
+
+// 点击菜单外部时自动隐藏
+document.addEventListener('click', (event) => {
+  const menu = document.getElementById('feature-menu');
+  
+  if (!menu.contains(event.target)) {
+    menu.classList.remove('visible');
+  }
+});
+
+// 面板切换
+function togglePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (panel) {
+    if (panel.classList.contains('hidden')) {
+      // 隐藏其他面板
+      document.querySelectorAll('.control-panel').forEach(p => {
+        p.classList.add('hidden');
+      });
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+}
+
+function hidePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (panel) {
+    panel.classList.add('hidden');
+  }
+}
+
+function removePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (panel) {
+    panel.remove();
+  }
+}
+
+// 设备控制
+function renderEquipmentControls() {
+  const container = document.getElementById('equipment-controls');
+  if (!container) return;
+  
+  container.innerHTML = equipmentData.map(eq => `
+    <div class="equipment-control-item">
+      <div class="equipment-control-info">
+        <span class="equipment-control-icon">${eq.type === 'pump' ? '🔧' : eq.type === 'valve' ? '🚰' : '⚡'}</span>
+        <div>
+          <div class="equipment-control-name">${eq.name}</div>
+          <div class="equipment-control-status">${eq.status === 'online' ? '运行中' : eq.status === 'standby' ? '待机' : eq.status === 'fault' ? '故障' : '离线'}</div>
+        </div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" ${eq.status === 'online' ? 'checked' : ''} onchange="toggleEquipment('${eq.id}', this.checked)">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+  `).join('');
+}
+
+function toggleEquipment(eqId, isOn) {
+  const equipment = equipmentData.find(e => e.id === eqId);
+  if (equipment) {
+    equipment.status = isOn ? 'online' : 'standby';
+    if (isOn) {
+      equipment.efficiency = '95%';
+    } else {
+      equipment.efficiency = '0%';
+    }
+    renderEquipment();
+    renderEquipmentControls();
+    addSimulationLog('info', `${equipment.name}已${isOn ? '启动' : '关闭'}`);
+    
+    // 如果开启模拟，同步到AI
+    if (simulationActive) {
+      sendUpdate('equipment', equipmentData);
+    }
+  }
+}
+
+// 天气预报
+let currentWeather = {
+  temp: 28,
+  condition: 'sunny',
+  icon: '☀️',
+  description: '晴朗',
+  wind: 3,
+  humidity: 45
+};
+
+function updateWeatherDisplay() {
+  const current = document.getElementById('weather-current');
+  if (current) {
+    current.innerHTML = `
+      <div class="weather-icon">${currentWeather.icon}</div>
+      <div class="weather-temp">${currentWeather.temp}°C</div>
+      <div class="weather-desc">${currentWeather.description}</div>
+    `;
+  }
+  
+  const forecast = document.getElementById('weather-forecast');
+  if (forecast) {
+    const times = ['现在', '3小时后', '6小时后', '12小时后'];
+    const temps = [currentWeather.temp, currentWeather.temp + 2, currentWeather.temp + 4, currentWeather.temp + 1];
+    forecast.innerHTML = times.map((time, i) => `
+      <div class="forecast-item">
+        <div class="forecast-time">${time}</div>
+        <div class="forecast-icon">${currentWeather.icon}</div>
+        <div class="forecast-temp">${temps[i]}°C</div>
+      </div>
+    `).join('');
+  }
+  
+  // 更新气象影响
+  document.getElementById('temp-effect').textContent = `±${(currentWeather.wind * 0.2).toFixed(1)}°C`;
+  document.getElementById('pressure-effect').textContent = `±${(currentWeather.wind * 0.05).toFixed(2)}MPa`;
+  document.getElementById('gas-effect').textContent = currentWeather.wind > 5 ? '高' : currentWeather.wind > 3 ? '中' : '低';
+}
+
+function randomWeather() {
+  const conditions = [
+    { icon: '☀️', description: '晴朗', tempRange: [25, 35], windRange: [2, 5] },
+    { icon: '⛅', description: '多云', tempRange: [22, 30], windRange: [3, 6] },
+    { icon: '🌧️', description: '小雨', tempRange: [18, 25], windRange: [4, 8] },
+    { icon: '⛈️', description: '雷暴', tempRange: [20, 28], windRange: [8, 15] },
+    { icon: '🌫️', description: '雾天', tempRange: [15, 22], windRange: [1, 3] },
+    { icon: '❄️', description: '低温', tempRange: [5, 15], windRange: [3, 7] }
+  ];
+  
+  const weather = conditions[Math.floor(Math.random() * conditions.length)];
+  currentWeather = {
+    temp: Math.round(Math.random() * (weather.tempRange[1] - weather.tempRange[0]) + weather.tempRange[0]),
+    condition: weather.description,
+    icon: weather.icon,
+    description: weather.description,
+    wind: Math.round(Math.random() * (weather.windRange[1] - weather.windRange[0]) + weather.windRange[0]),
+    humidity: Math.round(30 + Math.random() * 50)
+  };
+  
+  updateWeatherDisplay();
+  addSimulationLog('info', `天气变化：${currentWeather.description}，温度${currentWeather.temp}°C，风速${currentWeather.wind}m/s`);
+  
+  // 影响传感器数据
+  applyWeatherEffects();
+}
+
+function applyWeatherEffects() {
+  sensorsData.forEach(sensor => {
+    if (sensor.type === 'temp') {
+      const base = 82;
+      const weatherEffect = (currentWeather.temp - 25) * 0.5;
+      const noise = (Math.random() - 0.5) * 2;
+      sensor.values.temp = `${(base + weatherEffect + noise).toFixed(1)}°C`;
+    }
+    if (sensor.type === 'wind') {
+      sensor.values.speed = `${currentWeather.wind}m/s`;
+      sensor.values.direction = ['东风', '南风', '西风', '北风', '东南风', '东北风', '西南风', '西北风'][Math.floor(Math.random() * 8)];
+    }
+  });
+  
+  renderSensors(sensorsData);
+}
+
+// 巡检任务
+let patrolTasks = [];
+
+function updatePatrolTasks() {
+  const container = document.getElementById('patrol-tasks');
+  const totalEl = document.getElementById('patrol-total');
+  const completedEl = document.getElementById('patrol-completed');
+  const pendingEl = document.getElementById('patrol-pending');
+  
+  if (totalEl) totalEl.textContent = patrolTasks.length;
+  if (completedEl) completedEl.textContent = patrolTasks.filter(t => t.completed).length;
+  if (pendingEl) pendingEl.textContent = patrolTasks.filter(t => !t.completed).length;
+  
+  if (!container) return;
+  
+  if (patrolTasks.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#64748b;font-size:12px;padding:20px;">暂无巡检任务，点击下方按钮创建</div>';
+    return;
+  }
+  
+  container.innerHTML = patrolTasks.map((task, index) => `
+    <div class="patrol-task ${task.completed ? 'completed' : ''}">
+      <span class="patrol-task-icon">${task.completed ? '✅' : '📍'}</span>
+      <div class="patrol-task-content">
+        <div class="patrol-task-title">${task.title}</div>
+        <div class="patrol-task-location">${task.location}</div>
+      </div>
+      ${!task.completed ? `<button class="patrol-task-btn" onclick="completePatrolTask(${index})">完成</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function createPatrolTask() {
+  const locations = [
+    { area: '催化裂化装置区', tasks: ['检查反应器温度', '巡视催化剂储罐', '检查再生器运行状态'] },
+    { area: '加氢反应区', tasks: ['检查高压管道密封', '巡视反应器床层温度', '检查氢气压缩机'] },
+    { area: '储罐区', tasks: ['检查液位计', '巡视储罐呼吸阀', '检查泡沫灭火系统'] },
+    { area: '泵房', tasks: ['检查机泵运行状态', '巡视轴承温度', '检查润滑油液位'] }
+  ];
+  
+  const location = locations[Math.floor(Math.random() * locations.length)];
+  const task = location.tasks[Math.floor(Math.random() * location.tasks.length)];
+  
+  patrolTasks.unshift({
+    title: task,
+    location: location.area,
+    completed: false,
+    time: new Date().toLocaleTimeString()
+  });
+  
+  updatePatrolTasks();
+  addSimulationLog('info', `新巡检任务：${task} (${location.area})`);
+}
+
+function completePatrolTask(index) {
+  patrolTasks[index].completed = true;
+  patrolTasks[index].completedTime = new Date().toLocaleTimeString();
+  updatePatrolTasks();
+  addSimulationLog('info', `巡检任务完成：${patrolTasks[index].title}`);
+}
+
+// 应急预案
+let emergencyLog = [];
+
+function triggerEmergency(level) {
+  const levels = {
+    low: { name: '三级预警', color: '#f59e0b', actions: ['加强监控', '值班人员注意巡查'] },
+    medium: { name: '二级预警', color: '#f97316', actions: ['启动部门预案', '通知相关人员', '准备应急物资'] },
+    high: { name: '一级预警', color: '#ef4444', actions: ['启动全厂预案', '疏散无关人员', '启动应急预案', '通知上级部门', '成立现场指挥部'] }
+  };
+  
+  const emergency = levels[level];
+  const time = new Date().toLocaleTimeString();
+  
+  emergencyLog.unshift({
+    level: emergency.name,
+    color: emergency.color,
+    actions: emergency.actions,
+    time: time
+  });
+  
+  if (emergencyLog.length > 10) emergencyLog.pop();
+  
+  // 更新日志显示
+  const logContent = document.getElementById('emergency-log-content');
+  if (logContent) {
+    logContent.innerHTML = emergencyLog.map(log => `
+      <div class="log-entry">
+        <span class="time">${log.time}</span>
+        <span style="color:${log.color};font-weight:600;">${log.level}</span>
+        - ${log.actions.join(', ')}
+      </div>
+    `).join('');
+  }
+  
+  addSimulationLog('warning', `${emergency.name}已启动！${emergency.actions.join('、')}`);
+  
+  // 发送告警到AI系统
+  alertsData.unshift({
+    id: `alert-emergency-${Date.now()}`,
+    title: `${emergency.name}已启动`,
+    desc: emergency.actions.join('、'),
+    level: level === 'high' ? 'danger' : 'warning',
+    time: time
+  });
+  
+  renderAlerts();
+}
+
+// 监听石化数据变化并同步到AI
+const originalRenderSensors = renderSensors;
+renderSensors = function() {
+  originalRenderSensors();
+  sendUpdate('sensors', sensorsData);
+};
+
+const originalRenderPersonnel = renderPersonnel;
+renderPersonnel = function() {
+  originalRenderPersonnel();
+  sendUpdate('personnel', personnelData);
+};
+
+const originalRenderEquipment = renderEquipment;
+renderEquipment = function() {
+  originalRenderEquipment();
+  sendUpdate('equipment', equipmentData);
+};
+
+const originalRenderAlerts = renderAlerts;
+renderAlerts = function() {
+  originalRenderAlerts();
+  sendUpdate('alerts', alertsData);
+};
+
+// AI智能助手功能
+let aiMessages = [];
+
+function toggleAIAssistant() {
+  const panel = document.getElementById('ai-assistant-panel');
+  panel.classList.toggle('hidden');
+}
+
+function sendQuickAIMessage(message) {
+  document.getElementById('ai-input').value = message;
+  sendAIMessage();
+}
+
+function handleAIInputKeypress(event) {
+  if (event.key === 'Enter') {
+    sendAIMessage();
+  }
+}
+
+function sendAIMessage() {
+  const input = document.getElementById('ai-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  // 添加用户消息
+  addAIMessage(message, 'user');
+  input.value = '';
+
+  // 模拟AI思考
+  setTimeout(() => {
+    const response = generateAIResponse(message);
+    addAIMessage(response, 'ai');
+  }, 800 + Math.random() * 1000);
+}
+
+function addAIMessage(content, type) {
+  const container = document.getElementById('ai-messages');
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `ai-assistant-message ${type}`;
+  messageDiv.textContent = content;
+  container.appendChild(messageDiv);
+  container.scrollTop = container.scrollHeight;
+  
+  aiMessages.push({ content, type, time: new Date().toLocaleTimeString() });
+}
+
+function generateAIResponse(userMessage) {
+  const currentData = getCurrentDataSummary();
+  
+  const responses = {
+    '分析当前传感器数据': `根据实时数据分析：
+• 温度传感器：${currentData.temp}（正常范围75-85°C）
+• 压力传感器：${currentData.pressure}
+• 气体浓度：${currentData.gas}
+• 设备在线率：${currentData.equipment}
+${currentData.alerts > 0 ? `⚠️ 当前有${currentData.alerts}个告警需要关注` : '✅ 系统运行正常'}`,
+    '检查告警原因': `当前告警分析：
+${alertsData.length > 0 ? alertsData.slice(0, 3).map(a => `• ${a.level === 'danger' ? '🔴' : '🟡'} ${a.title}：${a.desc}`).join('\n') : '暂无告警'}
+
+建议：${alertsData.length > 0 ? '优先处理红色告警，必要时启动应急预案' : '继续保持监控'}`,
+    '给出优化建议': `基于当前状态的优化建议：
+1. ${currentData.temp > 85 ? '降低温度设定值' : '保持当前温度控制'}
+2. ${currentData.gas > 0.5 ? '增加通风设备' : '通风系统正常运行'}
+3. ${currentData.equipment < 0.9 ? '检查离线设备' : '设备运行良好'}
+4. 建议创建巡检任务确认现场状态`,
+    '模拟结果分析': `模拟数据深度分析：
+• 已触发${simulationHistory.filter(h => h.type !== 'info').length}个模拟事件
+• 当前天气影响：${currentWeather.description}
+• 设备效率波动：±${Math.round(Math.random() * 5 + 2)}%
+• 建议：继续观察传感器数据趋势，必要时调整模拟参数`
+  };
+
+  if (responses[userMessage]) {
+    return responses[userMessage];
+  }
+
+  // 默认回复
+  return `收到您的问题："${userMessage}"
+基于当前${currentData.sensorCount}个传感器数据，系统状态${currentData.alerts > 0 ? '需要关注' : '良好'}。
+您可以点击上方快捷操作获取更精准的分析，或切换到AI系统进行深度对话。`;
+}
+
+function getCurrentDataSummary() {
+  const tempSensor = sensorsData.find(s => s.type === 'temp');
+  const pressSensor = sensorsData.find(s => s.type === 'pressure');
+  const gasSensor = sensorsData.find(s => s.type === 'gas');
+  const onlineEquip = equipmentData.filter(e => e.status === 'online').length;
+
+  return {
+    temp: tempSensor?.values?.temp || '82°C',
+    pressure: pressSensor?.values?.pressure || '2.5MPa',
+    gas: gasSensor?.values?.gas || '0.15%',
+    equipment: (onlineEquip / equipmentData.length).toFixed(1),
+    alerts: alertsData.length,
+    sensorCount: sensorsData.length
+  };
+}
+
+// 一键智能分析
+function requestAIAnalysis() {
+  // 显示加载状态
+  const analysisBanner = document.createElement('div');
+  analysisBanner.id = 'analysis-banner';
+  analysisBanner.className = 'smart-alert-banner';
+  analysisBanner.innerHTML = `
+    <div class="smart-alert-icon">🤖</div>
+    <div class="smart-alert-content">
+      <div class="smart-alert-title">正在进行智能分析...</div>
+      <div class="smart-alert-desc">正在综合分析传感器、设备、天气数据</div>
+    </div>
+    <div class="smart-alert-actions">
+      <button class="smart-alert-btn secondary" onclick="document.getElementById('analysis-banner').remove()">关闭</button>
+    </div>
+  `;
+  document.body.appendChild(analysisBanner);
+
+  // 2秒后显示分析结果
+  setTimeout(() => {
+    analysisBanner.innerHTML = `
+      <div class="smart-alert-icon">✅</div>
+      <div class="smart-alert-content">
+        <div class="smart-alert-title">智能分析完成！</div>
+        <div class="smart-alert-desc">发现${alertsData.length > 0 ? alertsData.length : '0'}个需要关注的事项</div>
+      </div>
+      <div class="smart-alert-actions">
+        <button class="smart-alert-btn secondary" onclick="document.getElementById('analysis-banner').remove()">关闭</button>
+        <button class="smart-alert-btn primary" onclick="switchToMimo()">去AI系统</button>
+      </div>
+    `;
+  }, 2000);
+
+  // 同时在AI助手中显示分析
+  toggleAIAssistant();
+  setTimeout(() => sendQuickAIMessage('分析当前传感器数据'), 300);
+}
+
+// 增强版：模拟产生严重告警时自动弹出
+function checkAndShowSmartAlert(alertLevel) {
+  if (alertLevel === 'danger' && simulationActive) {
+    const banner = document.createElement('div');
+    banner.className = 'smart-alert-banner';
+    banner.innerHTML = `
+      <div class="smart-alert-icon">🚨</div>
+      <div class="smart-alert-content">
+        <div class="smart-alert-title">检测到严重告警！</div>
+        <div class="smart-alert-desc">建议立即请求AI分析或启动应急预案</div>
+      </div>
+      <div class="smart-alert-actions">
+        <button class="smart-alert-btn secondary" onclick="this.closest('.smart-alert-banner').remove()">稍后</button>
+        <button class="smart-alert-btn primary" onclick="requestAIAnalysis(); this.closest('.smart-alert-banner').remove();">AI分析</button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    // 5秒后自动消失
+    setTimeout(() => banner.remove(), 5000);
+  }
+}
+
+// ==================== 新增优化功能 ====================
+
+// 1. 页面加载动画
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('page-loader').classList.add('hidden');
+  }, 2000);
+  
+  // 初始化动态背景粒子
+  createParticles();
+  
+  // 初始化预测系统
+  initPredictionSystem();
+});
+
+// 2. 动态背景粒子
+function createParticles() {
+  const container = document.getElementById('particles-bg');
+  const particleCount = 20;
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.animationDelay = `${Math.random() * 15}s`;
+    particle.style.animationDuration = `${15 + Math.random() * 10}s`;
+    container.appendChild(particle);
+  }
+}
+
+// 3. 数据大屏模式
+function toggleDashboardMode() {
+  const dashboard = document.getElementById('dashboard-mode');
+  dashboard.classList.toggle('active');
+  
+  if (dashboard.classList.contains('active')) {
+    updateDashboardData();
+    // 定时更新大屏数据
+    setInterval(updateDashboardData, 3000);
+  }
+}
+
+function updateDashboardData() {
+  const onlineEquip = equipmentData.filter(e => e.status === 'online').length;
+  
+  document.getElementById('dash-sensors').textContent = sensorsData.length;
+  document.getElementById('dash-online').textContent = onlineEquip;
+  document.getElementById('dash-alerts').textContent = alertsData.length;
+  document.getElementById('dash-personnel').textContent = personnelData.length;
+  
+  // 添加数字跳动动画
+  document.querySelectorAll('.dashboard-value').forEach(el => {
+    el.classList.add('number-animate');
+    setTimeout(() => el.classList.remove('number-animate'), 300);
+  });
+}
+
+// 4. AI预测预警系统
+let predictionHistory = [];
+let predictionInterval = null;
+
+function initPredictionSystem() {
+  // 每30秒进行一次预测分析
+  predictionInterval = setInterval(runPrediction, 30000);
+}
+
+function runPrediction() {
+  const prediction = analyzeTrends();
+  predictionHistory.unshift(prediction);
+  
+  if (predictionHistory.length > 10) {
+    predictionHistory.pop();
+  }
+  
+  // 如果预测到高风险，显示预警
+  if (prediction.riskLevel > 70) {
+    showPredictionWarning(prediction);
+  }
+}
+
+function analyzeTrends() {
+  // 分析传感器数据趋势
+  const tempTrend = calculateTrend('temp');
+  const pressureTrend = calculateTrend('pressure');
+  const gasTrend = calculateTrend('gas');
+  
+  // 计算综合风险等级
+  const riskLevel = Math.round(
+    (tempTrend.risk * 0.3 + pressureTrend.risk * 0.3 + gasTrend.risk * 0.4)
+  );
+  
+  return {
+    riskLevel,
+    predictions: [
+      { type: '温度', trend: tempTrend.direction, risk: tempTrend.risk },
+      { type: '压力', trend: pressureTrend.direction, risk: pressureTrend.risk },
+      { type: '气体', trend: gasTrend.direction, risk: gasTrend.risk }
+    ],
+    recommendation: generatePredictionRecommendation(riskLevel),
+    time: new Date().toLocaleTimeString()
+  };
+}
+
+function calculateTrend(type) {
+  const sensor = sensorsData.find(s => s.type === type);
+  if (!sensor) return { direction: '稳定', risk: 0 };
+  
+  // 模拟趋势分析
+  const randomRisk = Math.random() * 100;
+  const direction = randomRisk > 60 ? '上升' : randomRisk < 40 ? '下降' : '稳定';
+  
+  return {
+    direction,
+    risk: randomRisk
+  };
+}
+
+function generatePredictionRecommendation(riskLevel) {
+  if (riskLevel > 80) {
+    return '高风险预警：建议立即检查关键设备，准备应急预案';
+  } else if (riskLevel > 60) {
+    return '中等风险：建议加强监控，关注异常传感器';
+  } else if (riskLevel > 40) {
+    return '低风险：保持常规监控，定期巡检';
+  }
+  return '系统稳定：继续保持当前运行状态';
+}
+
+function showPredictionWarning(prediction) {
+  const banner = document.createElement('div');
+  banner.className = 'smart-alert-banner';
+  banner.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95))';
+  banner.innerHTML = `
+    <div class="smart-alert-icon">🔮</div>
+    <div class="smart-alert-content">
+      <div class="smart-alert-title">AI预测预警</div>
+      <div class="smart-alert-desc">风险等级: ${prediction.riskLevel}% - ${prediction.recommendation}</div>
+    </div>
+    <div class="smart-alert-actions">
+      <button class="smart-alert-btn secondary" onclick="this.closest('.smart-alert-banner').remove()">稍后</button>
+      <button class="smart-alert-btn primary" onclick="executeAutoOptimization(); this.closest('.smart-alert-banner').remove();">自动优化</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  
+  setTimeout(() => banner.remove(), 8000);
+}
+
+// 5. AI自动优化功能
+function executeAutoOptimization() {
+  addAIMessage('正在执行AI自动优化...', 'ai');
+  
+  // 模拟优化过程
+  const optimizations = [
+    { action: '调整温度设定值', target: 'temp-001', effect: '降低5°C' },
+    { action: '启动备用通风设备', target: 'vent-001', effect: '增加通风量' },
+    { action: '调整设备运行参数', target: 'eq-001', effect: '优化效率' }
+  ];
+  
+  optimizations.forEach((opt, index) => {
+    setTimeout(() => {
+      // 执行优化
+      if (opt.target.includes('temp')) {
+        const sensor = sensorsData.find(s => s.id === opt.target);
+        if (sensor) {
+          sensor.values.temp = '78°C';
+          sensor.status = 'online';
+        }
+      }
+      
+      addAIMessage(`✅ ${opt.action} 完成 (${opt.effect})`, 'ai');
+      
+      if (index === optimizations.length - 1) {
+        addAIMessage('🎉 自动优化完成！系统已恢复稳定状态', 'ai');
+        renderSensors(sensorsData);
+      }
+    }, (index + 1) * 1000);
+  });
+}
+
+// 6. 智能异常分类
+function classifyAnomalies() {
+  const classifications = {
+    equipment: {
+      name: '设备故障类',
+      color: '#ef4444',
+      icon: '🔧',
+      alerts: alertsData.filter(a => a.title.includes('设备') || a.title.includes('泵') || a.title.includes('压缩机'))
+    },
+    safety: {
+      name: '安全风险类',
+      color: '#f59e0b',
+      icon: '⚠️',
+      alerts: alertsData.filter(a => a.title.includes('气体') || a.title.includes('泄漏') || a.title.includes('硫化氢'))
+    },
+    environment: {
+      name: '环境异常类',
+      color: '#3b82f6',
+      icon: '🌡️',
+      alerts: alertsData.filter(a => a.title.includes('温度') || a.title.includes('压力') || a.title.includes('噪声'))
+    },
+    other: {
+      name: '其他告警',
+      color: '#64748b',
+      icon: '📋',
+      alerts: alertsData.filter(a => !a.title.includes('设备') && !a.title.includes('泵') && !a.title.includes('气体') && !a.title.includes('温度'))
+    }
+  };
+  
+  return classifications;
+}
+
+function showAnomalyClassification() {
+  const classifications = classifyAnomalies();
+  
+  const panel = document.createElement('div');
+  panel.className = 'smart-alert-banner';
+  panel.style.width = '500px';
+  panel.innerHTML = `
+    <div class="smart-alert-icon">📊</div>
+    <div class="smart-alert-content" style="flex: 1;">
+      <div class="smart-alert-title">智能异常分类分析</div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px;">
+        ${Object.entries(classifications).map(([key, cls]) => `
+          <div style="padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">${cls.icon}</span>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: ${cls.color};">${cls.name}</div>
+              <div style="font-size: 11px;">${cls.alerts.length} 个告警</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="smart-alert-actions">
+      <button class="smart-alert-btn secondary" onclick="this.closest('.smart-alert-banner').remove()">关闭</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  
+  setTimeout(() => panel.remove(), 10000);
+}
+
+// 7. 视频监控模拟
+function createVideoMonitorPanel() {
+  // 先检查是否已存在面板，存在则移除
+  const existingPanel = document.getElementById('video-monitor-panel');
+  if (existingPanel) {
+    existingPanel.remove();
+  }
+  
+  const panel = document.createElement('div');
+  panel.id = 'video-monitor-panel';
+  panel.className = 'control-panel';
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="#ef4444">
+          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+        </svg>
+        视频监控中心
+      </div>
+      <button class="close-btn" onclick="removePanel('video-monitor-panel')">✕</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px;">
+      ${['催化裂化区', '加氢反应区', '储罐区', '泵房区'].map((area, i) => `
+        <div class="video-monitor" style="height: 150px;">
+          <div class="video-header">
+            <div class="video-title">
+              <span class="video-recording-dot"></span>
+              CAM-${i + 1}
+            </div>
+            <div class="video-recording">REC</div>
+          </div>
+          <div class="video-content">
+            <div style="text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 8px;">📹</div>
+              <div>${area}</div>
+            </div>
+          </div>
+          <div class="video-overlay">
+            <span>${new Date().toLocaleTimeString()}</span>
+            <span>正常</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  document.body.appendChild(panel);
+}
+
+// 8. 3D厂区地图
+function create3DMapPanel() {
+  const panel = document.createElement('div');
+  panel.id = '3d-map-panel';
+  panel.className = 'control-panel';
+  panel.style.width = '600px';
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="#22c55e">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        3D厂区地图
+      </div>
+      <button class="close-btn" onclick="hidePanel('3d-map-panel')">✕</button>
+    </div>
+    <div class="map-3d-container">
+      <div class="map-3d" style="width: 100%; height: 300px; position: relative;">
+        <!-- 催化裂化装置 -->
+        <div class="building-3d" style="left: 10%; top: 20%; width: 80px; height: 80px; --height: 60px;">
+          <div class="building-top" style="display: flex; align-items: center; justify-content: center; font-size: 10px;">催化裂化</div>
+          <div class="building-front"></div>
+          <div class="building-side"></div>
+        </div>
+        <!-- 加氢反应器 -->
+        <div class="building-3d" style="left: 40%; top: 30%; width: 100px; height: 100px; --height: 80px;">
+          <div class="building-top" style="display: flex; align-items: center; justify-content: center; font-size: 10px;">加氢反应</div>
+          <div class="building-front"></div>
+          <div class="building-side"></div>
+        </div>
+        <!-- 储罐区 -->
+        <div class="building-3d" style="left: 70%; top: 50%; width: 60px; height: 60px; --height: 40px;">
+          <div class="building-top" style="display: flex; align-items: center; justify-content: center; font-size: 10px;">储罐区</div>
+          <div class="building-front"></div>
+          <div class="building-side"></div>
+        </div>
+        <!-- 泵房 -->
+        <div class="building-3d" style="left: 20%; top: 70%; width: 70px; height: 70px; --height: 50px;">
+          <div class="building-top" style="display: flex; align-items: center; justify-content: center; font-size: 10px;">泵房</div>
+          <div class="building-front"></div>
+          <div class="building-side"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding: 16px; font-size: 12px; color: var(--text-muted);">
+      💡 提示：鼠标悬停在建筑物上可查看详情，拖动可旋转视角
+    </div>
+  `;
+  document.body.appendChild(panel);
+}
+
+// 更新功能菜单，添加新功能入口
+function updateFeatureMenu() {
+  const menu = document.getElementById('feature-menu');
+  if (menu) {
+    // 添加数据大屏按钮
+    const dashboardItem = document.createElement('div');
+    dashboardItem.className = 'feature-item';
+    dashboardItem.onclick = toggleDashboardMode;
+    dashboardItem.innerHTML = `
+      <div class="feature-icon">🖥️</div>
+      <div class="feature-label">数据大屏</div>
+    `;
+    menu.appendChild(dashboardItem);
+    
+    // 添加视频监控按钮
+    const videoItem = document.createElement('div');
+    videoItem.className = 'feature-item';
+    videoItem.onclick = () => { togglePanel('video-monitor-panel'); createVideoMonitorPanel(); };
+    videoItem.innerHTML = `
+      <div class="feature-icon">📹</div>
+      <div class="feature-label">视频监控</div>
+    `;
+    menu.appendChild(videoItem);
+    
+    // 添加3D地图按钮
+    const mapItem = document.createElement('div');
+    mapItem.className = 'feature-item';
+    mapItem.onclick = () => { togglePanel('3d-map-panel'); create3DMapPanel(); };
+    mapItem.innerHTML = `
+      <div class="feature-icon">🗺️</div>
+      <div class="feature-label">3D地图</div>
+    `;
+    menu.appendChild(mapItem);
+    
+    // 添加异常分类按钮
+    const classifyItem = document.createElement('div');
+    classifyItem.className = 'feature-item';
+    classifyItem.onclick = showAnomalyClassification;
+    classifyItem.innerHTML = `
+      <div class="feature-icon">📊</div>
+      <div class="feature-label">异常分类</div>
+    `;
+    menu.appendChild(classifyItem);
+  }
+}
+
+// 页面加载后更新功能菜单
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(updateFeatureMenu, 100);
+});
+</script>
+
+<style>
+.ai-analysis-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--bg-card);
+  border: 1px solid rgba(124, 58, 237, 0.5);
+  border-radius: var(--radius);
+  padding: 20px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3);
+  z-index: 9999;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -20px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -20px);
+    opacity: 0;
+  }
+}
+
+/* 模拟控制面板样式 */
+.simulation-panel {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: var(--bg-card);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  width: 360px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  animation: slideInLeft 0.4s ease;
+}
+
+.simulation-panel.hidden {
+  display: none;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.simulation-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.simulation-panel .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.simulation-panel .panel-title svg {
+  width: 18px;
+  height: 18px;
+  fill: #ef4444;
+}
+
+.simulation-panel .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.simulation-panel .status-badge.active {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.simulation-panel .status-badge.inactive {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+.simulation-panel .status-dot-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.simulation-panel .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.simulation-panel .stat-card {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.simulation-panel .stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.simulation-panel .stat-label {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.simulation-panel .log-container {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.simulation-panel .log-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.simulation-panel .log-container::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 2px;
+}
+
+.simulation-panel .controls {
+  display: flex;
+  gap: 8px;
+}
+
+.simulation-panel .control-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.simulation-panel .control-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.simulation-panel .control-btn.danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.simulation-panel .control-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+/* 通用控制面板样式 */
+.control-panel {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 9998;
+  animation: slideInLeft 0.4s ease;
+}
+
+.control-panel.hidden {
+  display: none;
+}
+
+.control-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.control-panel .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.control-panel .close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 8px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-panel .close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* 功能菜单 */
+.feature-menu {
+  position: fixed;
+  bottom: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 9997;
+  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feature-menu.visible {
+  bottom: 20px;
+}
+
+.feature-menu:hover {
+  bottom: 20px;
+}
+
+/* 底部悬停感应区域 */
+.feature-menu-hover-zone {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  z-index: 9995;
+  pointer-events: none;
+}
+
+.feature-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 70px;
+}
+
+.feature-item:hover {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: var(--primary);
+  transform: translateY(-4px);
+}
+
+.feature-icon {
+  font-size: 24px;
+}
+
+.feature-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* 设备控制 */
+.equipment-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.equipment-control-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.equipment-control-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.equipment-control-icon {
+  font-size: 20px;
+}
+
+.equipment-control-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.equipment-control-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 开关按钮 */
+.switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #334155;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .switch-slider {
+  background-color: #22c55e;
+}
+
+.switch input:checked + .switch-slider:before {
+  transform: translateX(22px);
+}
+
+/* 天气预报 */
+.weather-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weather-current {
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(14, 165, 233, 0.1));
+  border-radius: 12px;
+}
+
+.weather-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.weather-temp {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.weather-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.weather-forecast {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.forecast-item {
+  text-align: center;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+}
+
+.forecast-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.forecast-icon {
+  font-size: 20px;
+  margin: 4px 0;
+}
+
+.forecast-temp {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.weather-effects h4 {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.effect-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+}
+
+.effect-value {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* 巡检任务 */
+.patrol-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.patrol-stat {
+  text-align: center;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 10px;
+}
+
+.patrol-stat .stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.patrol-stat .stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.patrol-tasks {
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.patrol-task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.patrol-task.completed {
+  opacity: 0.6;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.patrol-task-icon {
+  font-size: 20px;
+}
+
+.patrol-task-content {
+  flex: 1;
+}
+
+.patrol-task-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.patrol-task-location {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.patrol-task-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  background: rgba(14, 165, 233, 0.2);
+  color: #0ea5e9;
+}
+
+.patrol-task-btn:hover {
+  background: rgba(14, 165, 233, 0.3);
+}
+
+/* 应急预案 */
+.emergency-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.emergency-level {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.emergency-level:hover {
+  transform: translateX(4px);
+  border-color: var(--primary);
+}
+
+.level-icon {
+  font-size: 28px;
+}
+
+.level-info {
+  flex: 1;
+}
+
+.level-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.level-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.emergency-log h4 {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.emergency-log-content {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.log-entry {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-entry .time {
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+/* AI智能助手面板 */
+.ai-assistant-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  width: 380px;
+  max-height: 500px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 9996;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-assistant-panel.hidden {
+  display: none;
+}
+
+.ai-assistant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(124, 58, 237, 0.1));
+}
+
+.ai-assistant-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ai-assistant-icon {
+  font-size: 24px;
+}
+
+.ai-assistant-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #22c55e;
+}
+
+.ai-assistant-status-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: ai-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.ai-assistant-messages {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-assistant-message {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ai-assistant-message.ai {
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  color: var(--text-primary);
+}
+
+.ai-assistant-message.user {
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  color: var(--text-primary);
+  margin-left: 30px;
+}
+
+.ai-assistant-input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-assistant-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.ai-assistant-input:focus {
+  border-color: var(--primary);
+}
+
+.ai-assistant-send-btn {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-assistant-send-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.ai-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+
+.ai-quick-action {
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-quick-action:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* AI分析建议卡片 */
+.ai-suggestion-card {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(124, 58, 237, 0.1));
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.ai-suggestion-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-suggestion-content {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.ai-suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-suggestion-action {
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-suggestion-action:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.ai-suggestion-action.primary {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border: none;
+  color: white;
+}
+
+/* 智能预警横幅 */
+.smart-alert-banner {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+  color: white;
+  padding: 14px 24px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: banner-slide-down 0.4s ease;
+}
+
+@keyframes banner-slide-down {
+  from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+.smart-alert-icon {
+  font-size: 28px;
+}
+
+.smart-alert-content {
+  flex: 1;
+}
+
+.smart-alert-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.smart-alert-desc {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.smart-alert-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.smart-alert-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.smart-alert-btn.primary {
+  background: white;
+  color: #dc2626;
+  border: none;
+}
+
+.smart-alert-btn.secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ai-analysis-panel .analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ai-analysis-panel .analysis-header h3 {
+  color: #7c3aed;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-analysis-panel .analysis-header button {
+  background: rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  color: #7c3aed;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ai-analysis-panel .analysis-header button:hover {
+  background: rgba(124, 58, 237, 0.3);
+}
+
+.ai-analysis-panel .analysis-content {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ai-analysis-panel .analysis-content pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+</style>
+</body>
+</html>

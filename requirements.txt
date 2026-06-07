@@ -1,5 +1,7 @@
 flask
 flask-cors
+flask-socketio
+python-socketio
 pdfplumber
 python-docx
 requests

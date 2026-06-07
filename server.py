@@ -1,14 +1,28 @@
 """
 DeepSeek Neural Interface — Flask Backend
-Handles: chat backup/load, file upload/parsing, API proxy (streaming)
+Handles: chat backup/load, file upload/parsing, API proxy (streaming), WebSocket for real-time data
 """
-import os, json, csv, io, tempfile
-from flask import Flask, request, jsonify, Response, send_from_directory
+import os, json, csv, io, tempfile, threading, time
+from flask import Flask, request, jsonify, Response, send_from_directory, session
 from flask_cors import CORS
 import requests as req
 
 app = Flask(__name__)
-CORS(app)
+app.config['SECRET_KEY'] = 'petrochemical-ai-integration-2026'
+CORS(app, supports_credentials=True)
+
+# 可选的WebSocket支持 - 如果没有安装依赖也能运行
+socketio = None
+WEBSOCKET_AVAILABLE = False
+
+try:
+    from flask_socketio import SocketIO, emit, join_room, leave_room
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    WEBSOCKET_AVAILABLE = True
+    print("[OK] WebSocket support enabled")
+except ImportError:
+    print("[WARN] flask_socketio not installed, WebSocket functionality unavailable")
+    print("       Tip: Run 'pip install Flask-SocketIO python-socketio' to enable WebSocket")
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR   = os.path.join(BASE_DIR, 'data')
@@ -20,10 +34,227 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_EXT = {'.pdf', '.docx', '.csv', '.txt', '.json', '.md', '.py', '.js', '.html', '.css'}
 
+# ==========================================
+# 共享状态管理器 - 石化系统与AI系统数据共享
+# ==========================================
+class SharedState:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.data = {
+            'petrochemical': {
+                'status': 'running',
+                'personnel': [],
+                'equipment': [],
+                'sensors': [],
+                'alerts': [],
+                'selectedZone': None,
+                'selectedPerson': None,
+                'selectedEquipment': None,
+                'lastUpdate': None
+            },
+            'ai': {
+                'connected': False,
+                'analysisMode': False,
+                'currentQuery': None,
+                'suggestions': []
+            },
+            'integration': {
+                'alertsToAI': [],
+                'aiCommands': [],
+                'biDirectionalSync': True
+            }
+        }
+        self.subscribers = set()
+    
+    def update_petrochemical(self, data_type, data):
+        with self.lock:
+            self.data['petrochemical'][data_type] = data
+            self.data['petrochemical']['lastUpdate'] = time.time()
+    
+    def get_petrochemical(self, data_type=None):
+        with self.lock:
+            if data_type:
+                return self.data['petrochemical'].get(data_type)
+            return self.data['petrochemical']
+    
+    def add_alert_for_ai(self, alert):
+        with self.lock:
+            self.data['integration']['alertsToAI'].append({
+                'alert': alert,
+                'timestamp': time.time(),
+                'processed': False
+            })
+        # 立即通知AI系统
+        if WEBSOCKET_AVAILABLE and socketio:
+            socketio.emit('new_alert', alert, room='ai_room')
+    
+    def add_ai_command(self, command):
+        with self.lock:
+            self.data['integration']['aiCommands'].append({
+                'command': command,
+                'timestamp': time.time(),
+                'executed': False
+            })
+        # 立即执行AI命令
+        if WEBSOCKET_AVAILABLE and socketio:
+            socketio.emit('ai_command', command, room='petrochemical_room')
+    
+    def get_integration_data(self):
+        with self.lock:
+            return self.data['integration']
+
+shared_state = SharedState()
+
+# ==========================================
+# WebSocket 事件处理 (仅在WebSocket可用时定义)
+# ==========================================
+if WEBSOCKET_AVAILABLE:
+    @socketio.on('connect')
+    def handle_connect():
+        print(f'Client connected: {request.sid}')
+        emit('connected', {'status': 'connected', 'sid': request.sid})
+
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        print(f'Client disconnected: {request.sid}')
+
+    @socketio.on('join')
+    def handle_join(data):
+        room = data.get('room', 'default')
+        join_room(room)
+        print(f'Client {request.sid} joined room: {room}')
+        emit('joined', {'room': room, 'status': 'success'})
+        
+        # 如果是AI系统连接，标记为已连接
+        if room == 'ai_room':
+            with shared_state.lock:
+                shared_state.data['ai']['connected'] = True
+            # 发送当前石化系统状态
+            emit('petrochemical_state', shared_state.get_petrochemical())
+            # 发送待处理的告警
+            integration = shared_state.get_integration_data()
+            for item in integration['alertsToAI']:
+                if not item['processed']:
+                    emit('pending_alert', item['alert'])
+
+    @socketio.on('leave')
+    def handle_leave(data):
+        room = data.get('room', 'default')
+        leave_room(room)
+        print(f'Client {request.sid} left room: {room}')
+        emit('left', {'room': room, 'status': 'success'})
+        
+        if room == 'ai_room':
+            with shared_state.lock:
+                shared_state.data['ai']['connected'] = False
+
+    @socketio.on('petrochemical_update')
+    def handle_petrochemical_update(data):
+        """接收石化系统更新的数据"""
+        print(f'Received petrochemical update: {data.get("type")}')
+        
+        data_type = data.get('type')
+        value = data.get('data')
+        
+        # 更新共享状态
+        shared_state.update_petrochemical(data_type, value)
+        
+        # 广播给AI系统
+        emit('petrochemical_update', data, room='ai_room')
+        
+        # 如果是告警，特殊处理
+        if data_type == 'alert':
+            shared_state.add_alert_for_ai(value)
+        
+        emit('update_ack', {'type': data_type, 'status': 'success'})
+
+    @socketio.on('ai_query')
+    def handle_ai_query(data):
+        """AI系统查询石化数据"""
+        print(f'AI query: {data}')
+        
+        query_type = data.get('query_type')
+        response = {'query_type': query_type}
+        
+        if query_type == 'all':
+            response['data'] = shared_state.get_petrochemical()
+        elif query_type == 'personnel':
+            response['data'] = shared_state.get_petrochemical('personnel')
+        elif query_type == 'equipment':
+            response['data'] = shared_state.get_petrochemical('equipment')
+        elif query_type == 'sensors':
+            response['data'] = shared_state.get_petrochemical('sensors')
+        elif query_type == 'alerts':
+            response['data'] = shared_state.get_petrochemical('alerts')
+        elif query_type == 'specific':
+            target = data.get('target')
+            response['data'] = shared_state.get_petrochemical(target)
+        
+        emit('ai_query_response', response)
+
+    @socketio.on('ai_command')
+    def handle_ai_command(data):
+        """AI系统发送控制命令到石化系统"""
+        print(f'AI command received: {data}')
+        
+        command = data.get('command')
+        params = data.get('params', {})
+        
+        # 添加到命令队列
+        shared_state.add_ai_command({
+            'command': command,
+            'params': params,
+            'sender': 'ai'
+        })
+        
+        emit('command_ack', {
+            'command': command,
+            'status': 'queued'
+        })
+
+    @socketio.on('ai_analysis_result')
+    def handle_ai_analysis(data):
+        """AI分析结果返回石化系统"""
+        print(f'AI analysis result: {data.get("type")}')
+        
+        # 广播给石化系统
+        emit('ai_analysis', data, room='petrochemical_room')
+        
+        # 更新AI状态
+        with shared_state.lock:
+            shared_state.data['ai']['analysisMode'] = data.get('analysisMode', False)
+            shared_state.data['ai']['suggestions'] = data.get('suggestions', [])
+
+# ==========================================
+# REST API - 状态查询
+# ==========================================
+@app.route('/api/shared-state')
+def get_shared_state():
+    """获取共享状态（HTTP轮询备用）"""
+    return jsonify(shared_state.get_petrochemical())
+
+@app.route('/api/integration-status')
+def get_integration_status():
+    """获取集成状态"""
+    return jsonify({
+        'ai_connected': shared_state.data['ai']['connected'],
+        'pending_alerts': len([a for a in shared_state.get_integration_data()['alertsToAI'] if not a['processed']]),
+        'pending_commands': len([c for c in shared_state.get_integration_data()['aiCommands'] if not c['executed']])
+    })
+
 # ─── Static ───────────────────────────────────────────────
 @app.route('/')
+@app.route('/index.html')
 def index():
-    return send_from_directory(BASE_DIR, 'index.html')
+    filepath = os.path.join(BASE_DIR, 'index.html')
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return f.read()
+
+@app.route('/petrochemical.html')
+def petrochemical():
+    filepath = os.path.join(BASE_DIR, 'petrochemical.html')
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return f.read()
 
 # ─── Chat Backup / Load ───────────────────────────────────
 @app.route('/api/chats', methods=['GET'])
@@ -203,8 +434,24 @@ def proxy():
 
 # ─── Main ─────────────────────────────────────────────────
 if __name__ == '__main__':
-    print('=' * 50)
-    print('  DeepSeek Neural Interface — Backend Server')
+    print('------------------------------------------------------------')
+    print('  DeepSeek Neural Interface - Backend Server')
+    print('  Integrated with Petrochemical AI System')
+    print('------------------------------------------------------------')
+    if WEBSOCKET_AVAILABLE:
+        print('  [OK] WebSocket Support: ENABLED')
+        print('  [OK] Real-time Data Sync: ENABLED')
+        print('  [OK] Bi-directional Communication: ENABLED')
+    else:
+        print('  [WARN] WebSocket Support: DISABLED')
+        print('         Install Flask-SocketIO to enable')
+        print('  [OK] Page switching still works')
+    print('------------------------------------------------------------')
     print('  Open http://localhost:8080 in your browser')
-    print('=' * 50)
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    print('  Access petrochemical system: http://localhost:8080/petrochemical.html')
+    print('------------------------------------------------------------')
+    
+    if WEBSOCKET_AVAILABLE and socketio:
+        socketio.run(app, host='0.0.0.0', port=8080, debug=False, allow_unsafe_werkzeug=True)
+    else:
+        app.run(host='0.0.0.0', port=8080, debug=False)
