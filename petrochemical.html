@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
 <title>石化厂区全场景北斗/多传感器融合主动感知识别与定位系统</title>
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <style>
@@ -2168,9 +2169,401 @@
       min-height: 500px;
     }
   }
+
+  /* Professional industrial monitoring workbench */
+  :root {
+    --ops-selection: #49a9c4;
+    --ops-normal: #46a57a;
+    --ops-warning: #d69b43;
+    --ops-critical: #d65d5d;
+    --ops-ai: #8b78c6;
+    --ops-surface: #10191f;
+    --ops-surface-raised: #142129;
+    --ops-border: #2a3a43;
+  }
+
+  .professional-mode {
+    background: #0a1116;
+  }
+
+  .professional-mode .particles-bg,
+  .professional-mode .bg-grid,
+  .professional-mode .header::before,
+  .professional-mode .title-group h1::after,
+  .professional-mode .title-group p::before,
+  .professional-mode .status-badge::before {
+    display: none;
+  }
+
+  .professional-mode .container {
+    max-width: none;
+    padding: 12px;
+  }
+
+  .professional-mode .header,
+  .professional-mode .panel,
+  .professional-mode .map-container {
+    background: var(--ops-surface);
+    border-color: var(--ops-border);
+    border-radius: 5px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    backdrop-filter: none;
+  }
+
+  .professional-mode .header {
+    min-height: 64px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    animation: none;
+  }
+
+  .professional-mode .logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 4px;
+    background: #173642;
+    box-shadow: none;
+  }
+
+  .professional-mode .title-group h1 {
+    font-size: 15px;
+    background: none;
+    color: #e2edf1;
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .professional-mode .title-group p {
+    color: #84969f;
+  }
+
+  .professional-mode .status-badge,
+  .professional-mode .time-display,
+  .professional-mode .nav-controls {
+    border-radius: 4px;
+    background: #0c151a;
+    border-color: var(--ops-border);
+  }
+
+  .professional-mode .status-dot {
+    animation: none;
+    box-shadow: none;
+    background: var(--ops-normal);
+  }
+
+  .professional-mode .status-text { color: var(--ops-normal); }
+
+  .professional-mode .grid {
+    grid-template-columns: minmax(0, 1fr) 390px;
+    grid-template-rows: minmax(500px, 1fr) 190px;
+    height: calc(100vh - 98px);
+    gap: 10px;
+  }
+
+  .professional-mode .map-container {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+  }
+
+  .professional-mode .alarm-rail {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    min-height: 0;
+  }
+
+  .professional-mode .evidence-panel {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+  }
+
+  .professional-mode .panel-header,
+  .professional-mode .map-header {
+    min-height: 46px;
+    padding: 10px 14px;
+    background: #111d24;
+    border-color: var(--ops-border);
+  }
+
+  .professional-mode .panel-title {
+    font-size: 13px;
+    letter-spacing: 0.3px;
+  }
+
+  .professional-mode .map-viewport {
+    background: #091217;
+  }
+
+  .professional-mode .map-btn,
+  .professional-mode .nav-btn {
+    min-height: 38px;
+    border-radius: 3px;
+  }
+
+  .professional-mode .map-btn.active,
+  .professional-mode .nav-btn.active {
+    background: #174250;
+    border-color: var(--ops-selection);
+    color: #dff6fc;
+  }
+
+  .professional-mode .zone {
+    fill: rgba(73, 169, 196, 0.025);
+    stroke: #36505b;
+  }
+
+  .professional-mode .zone.warning {
+    fill: rgba(214, 155, 67, 0.09);
+    stroke: var(--ops-warning);
+  }
+
+  .professional-mode .zone.danger {
+    fill: rgba(214, 93, 93, 0.1);
+    stroke: var(--ops-critical);
+  }
+
+  .professional-mode .zone.workbench-focus {
+    stroke: var(--ops-selection);
+    stroke-width: 5;
+    filter: drop-shadow(0 0 7px rgba(73, 169, 196, 0.45));
+  }
+
+  .professional-mode .personnel-ring,
+  .professional-mode .beacon-dot,
+  .professional-mode .beacon-line {
+    animation: none;
+  }
+
+  .professional-mode .alarm-rail .panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .professional-mode .alarm-rail .stats-grid {
+    order: 0;
+    margin: 0;
+  }
+
+  .professional-mode .alarm-rail .alerts-section {
+    order: 1;
+    margin: 0;
+    max-height: 250px;
+    overflow-y: auto;
+  }
+
+  .professional-mode .alarm-detail {
+    order: 2;
+  }
+
+  .professional-mode .alarm-rail .ai-section {
+    order: 3;
+    border: 1px solid rgba(139, 120, 198, 0.32);
+    background: rgba(139, 120, 198, 0.07);
+    border-radius: 4px;
+    padding: 10px;
+    display: none;
+  }
+
+  .professional-mode .ai-suggestions { display: none; }
+
+  .professional-mode .alert-item {
+    width: 100%;
+    color: inherit;
+    text-align: left;
+    border: 1px solid var(--ops-border);
+    border-left: 4px solid var(--ops-warning);
+    border-radius: 3px;
+    background: #111c22;
+  }
+
+  .professional-mode .alert-item.danger { border-left-color: var(--ops-critical); }
+  .professional-mode .alert-item.selected { border-color: var(--ops-selection); background: #142832; }
+  .professional-mode .alert-item.acknowledged { opacity: 0.72; }
+  .professional-mode .alert-item.resolved { opacity: 0.5; }
+
+  .alarm-meta,
+  .alarm-state,
+  .evidence-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #8da0a9;
+    font-size: 10px;
+  }
+
+  .alarm-state {
+    margin-left: auto;
+    padding: 2px 6px;
+    border: 1px solid var(--ops-border);
+    border-radius: 2px;
+  }
+
+  .alarm-detail {
+    border: 1px solid var(--ops-border);
+    background: #0d171c;
+    border-radius: 4px;
+    padding: 12px;
+  }
+
+  .alarm-detail h3 { font-size: 14px; margin-bottom: 7px; }
+  .alarm-detail p { color: #9aaab2; font-size: 11px; line-height: 1.65; }
+
+  .response-steps {
+    margin: 12px 0;
+    display: grid;
+    gap: 6px;
+  }
+
+  .response-step {
+    padding: 7px 9px;
+    border-left: 2px solid #425862;
+    background: #121f25;
+    color: #aebdc4;
+    font-size: 11px;
+  }
+
+  .response-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .ops-action {
+    min-height: 38px;
+    border: 1px solid #35505b;
+    border-radius: 3px;
+    background: #14252d;
+    color: #c9d8de;
+    cursor: pointer;
+  }
+
+  .ops-action.primary { border-color: var(--ops-selection); color: #dff6fc; }
+  .ops-action.warning { border-color: var(--ops-warning); color: #f2c987; }
+  .ops-action.danger { border-color: var(--ops-critical); color: #f0a0a0; }
+
+  .evidence-panel .panel-content {
+    overflow: hidden;
+    padding: 10px 14px;
+  }
+
+  .professional-mode .evidence-panel .nav-tabs,
+  .professional-mode .evidence-panel .sensor-list {
+    display: none;
+  }
+
+  .evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .evidence-card {
+    padding: 9px;
+    border: 1px solid var(--ops-border);
+    border-radius: 3px;
+    background: #111c22;
+  }
+
+  .evidence-card h4 {
+    color: #899ca5;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+
+  .evidence-value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 16px;
+    color: #dbe9ee;
+  }
+
+  .evidence-note { margin-top: 4px; color: #81949d; font-size: 10px; }
+
+  .ops-count {
+    display: inline-flex;
+    min-width: 18px;
+    justify-content: center;
+    margin-left: 4px;
+    padding: 1px 5px;
+    border-radius: 10px;
+    background: #22343d;
+    color: #b8cbd2;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+  }
+
+  .professional-mode :focus-visible {
+    outline: 2px solid var(--ops-selection);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 1100px) {
+    .professional-mode .header-right .status-badge,
+    .professional-mode .header-right .time-display {
+      display: none;
+    }
+
+    .professional-mode .grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(520px, 1fr) 190px;
+    }
+
+    .professional-mode .alarm-rail {
+      position: fixed;
+      top: 82px;
+      right: 12px;
+      bottom: 12px;
+      width: min(390px, calc(100vw - 24px));
+      z-index: 1200;
+      transform: translateX(calc(100% + 20px));
+      transition: transform 0.2s ease;
+    }
+
+    .professional-mode .alarm-rail.open { transform: translateX(0); }
+
+    .professional-mode .evidence-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .professional-mode .title-group p,
+    .professional-mode .header-right .nav-btn:not(:first-child) {
+      display: none;
+    }
+
+    .professional-mode .grid {
+      grid-template-rows: minmax(460px, 1fr) 230px;
+    }
+
+    .professional-mode .map-controls {
+      overflow-x: auto;
+      max-width: 60vw;
+    }
+
+    .professional-mode .evidence-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .professional-mode .evidence-card:nth-child(n+3) {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 </style>
 </head>
-<body>
+<body class="professional-mode">
 
 <!-- 页面加载动画 -->
 <div id="page-loader" class="page-loader">
@@ -2485,7 +2878,7 @@
 <div class="bg-grid"></div>
 
 <div class="container">
-  <header class="header">
+  <header class="header" aria-label="运行指挥栏">
     <div class="header-left">
       <div class="logo">
         <svg viewBox="0 0 24 24">
@@ -2504,6 +2897,8 @@
       </div>
       <div class="time-display" id="timeDisplay">--:--:--</div>
       <div class="nav-controls">
+        <button class="nav-btn" onclick="toggleAlarmRail()" aria-label="打开告警处置栏">告警 <span class="ops-count" id="headerAlarmCount">0</span></button>
+        <button class="nav-btn" onclick="toggleDashboardMode()" aria-label="切换展示大屏模式">展示模式</button>
         <button class="nav-btn warning" id="simulate-btn" onclick="toggleSimulation()">
           <svg viewBox="0 0 24 24">
             <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13h-3v3c0 .55-.45 1-1 1s-1-.45-1-1v-3H6c-.55 0-1-.45-1-1s.45-1 1-1h3V8c0-.55.45-1 1-1s1 .45 1 1v3h3c.55 0 1 .45 1 1s-.45 1-1 1z"/>
@@ -2532,18 +2927,19 @@
     </div>
   </header>
 
-  <div class="grid">
-    <div class="panel">
+  <div class="grid" id="professional-workbench">
+    <div class="panel evidence-panel">
       <div class="panel-header">
         <div class="panel-title">
           <svg viewBox="0 0 24 24">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path>
           </svg>
-          传感器监控
+          上下文证据链
         </div>
-        <span style="font-size:11px;color:var(--text-muted)">15 个在线</span>
+        <span style="font-size:11px;color:var(--text-muted)">实时联动</span>
       </div>
       <div class="panel-content">
+        <div id="evidenceContent" aria-live="polite"></div>
         <div class="nav-tabs">
           <div class="nav-tab active" onclick="switchSensorTab(event, 'all')">全部传感器</div>
           <div class="nav-tab" onclick="switchSensorTab(event, 'gas')">气体检测</div>
@@ -2687,13 +3083,13 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel alarm-rail" id="alarmRail">
       <div class="panel-header">
         <div class="panel-title">
           <svg viewBox="0 0 24 24">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"></path>
           </svg>
-          智能分析与告警
+          告警与响应
         </div>
       </div>
       <div class="panel-content">
@@ -2761,6 +3157,7 @@
           </div>
           <div id="alertsList"></div>
         </div>
+        <div class="alarm-detail" id="alarmDetail" aria-live="polite"></div>
       </div>
     </div>
   </div>
@@ -2822,6 +3219,16 @@ const alertsData = [
   { id: 'A003', level: 'danger', title: '设备维护提醒', desc: '原油储罐#A3温度异常，建议检查', time: '10:05:11' },
 ];
 
+const alarmOperationalMeta = {
+  A001: { zoneId: 1, zone: '炼化一区', source: 'S003 压力变送器', equipment: '反应釜 #1', personnel: '张三', state: 'unacknowledged', cause: '入口流量波动导致压力偏离控制带', reading: '2.45 MPa', trend: '持续波动', steps: ['确认联锁状态与入口阀位', '联系炼化一区现场操作员', '稳定进料并观察 10 分钟趋势'] },
+  A002: { zoneId: 3, zone: '储罐区', source: 'P003 人员定位标签', equipment: '原油储罐 #A3', personnel: '王五', state: 'unacknowledged', cause: '人员进入高危区域安全边界', reading: '距边界 3.2 m', trend: '正在接近', steps: ['语音提醒人员停止靠近', '确认作业许可与监护人', '必要时派遣安全员现场处置'] },
+  A003: { zoneId: 3, zone: '储罐区', source: 'S001 气体探测器', equipment: '原油储罐 #A3', personnel: '王五', state: 'unacknowledged', cause: '设备温度与气体浓度出现关联偏移', reading: '温度偏高', trend: '缓慢上升', steps: ['确认储罐温度与液位趋势', '派遣巡检人员进行红外复核', '准备降温和隔离措施'] },
+};
+
+alertsData.forEach(alertItem => Object.assign(alertItem, alarmOperationalMeta[alertItem.id] || {}));
+
+let activeWorkbenchContext = { type: 'alarm', id: alertsData[0].id };
+
 function init() {
   renderSensors();
   renderPersonnel();
@@ -2829,6 +3236,8 @@ function init() {
   renderBeacons();
   renderAlerts();
   updateStats();
+  updateOperationalCounts();
+  selectAlarm(alertsData[0].id);
   updateTime();
   setInterval(updateTime, 1000);
   setInterval(updatePositions, 3000);
@@ -2896,7 +3305,7 @@ function renderBeacons() {
 function renderAlerts() {
   const container = document.getElementById('alertsList');
   container.innerHTML = alertsData.map(a => `
-    <div class="alert-item ${a.level}" onclick="sendAlertToAI(this)">
+    <button type="button" class="alert-item ${a.level} ${a.state || 'unacknowledged'} ${activeWorkbenchContext.type === 'alarm' && activeWorkbenchContext.id === a.id ? 'selected' : ''}" onclick="selectAlarm('${a.id}')" aria-label="${a.title}，${a.zone || '厂区'}，状态 ${getAlarmStateLabel(a.state)}">
       <div class="alert-icon">
         <svg viewBox="0 0 24 24">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
@@ -2905,10 +3314,130 @@ function renderAlerts() {
       <div class="alert-content">
         <h4>${a.title}</h4>
         <p>${a.desc}</p>
-        <div class="alert-time">${a.time}</div>
+        <div class="alarm-meta"><span>${a.zone || '厂区'}</span><span>${a.time}</span><span class="alarm-state">${getAlarmStateLabel(a.state)}</span></div>
       </div>
-    </div>
+    </button>
   `).join('');
+}
+
+function getAlarmStateLabel(state) {
+  return state === 'resolved' ? '已解除' : state === 'escalated' ? '已升级' : state === 'dispatched' ? '已派遣' : state === 'acknowledged' ? '已确认' : '待确认';
+}
+
+function selectAlarm(id) {
+  activeWorkbenchContext = { type: 'alarm', id };
+  const alarmItem = alertsData.find(item => item.id === id);
+  if (!alarmItem) return;
+  renderAlerts();
+  renderAlarmDetail(alarmItem);
+  renderEvidence(activeWorkbenchContext);
+  focusAlarmOnMap(alarmItem);
+  document.getElementById('alarmRail')?.classList.add('open');
+}
+
+function renderAlarmDetail(alarmItem) {
+  const container = document.getElementById('alarmDetail');
+  if (!container || !alarmItem) return;
+  container.innerHTML = `
+    <div class="alarm-meta"><span>${alarmItem.level === 'danger' ? '严重告警' : '预警'}</span><span>${alarmItem.zone}</span><span>${alarmItem.time}</span></div>
+    <h3>${alarmItem.title}</h3>
+    <p>${alarmItem.desc}</p>
+    <div class="response-steps">
+      ${(alarmItem.steps || []).map((step, index) => `<div class="response-step">${index + 1}. ${step}</div>`).join('')}
+    </div>
+    <div class="response-actions">
+      <button class="ops-action primary" onclick="updateAlarmState('${alarmItem.id}', 'acknowledged')">确认告警</button>
+      <button class="ops-action" onclick="updateAlarmState('${alarmItem.id}', 'dispatched')">派遣处置</button>
+      <button class="ops-action warning" onclick="updateAlarmState('${alarmItem.id}', 'escalated')">升级响应</button>
+      <button class="ops-action danger" onclick="updateAlarmState('${alarmItem.id}', 'resolved')">解除告警</button>
+    </div>
+  `;
+}
+
+function updateAlarmState(id, state) {
+  const alarmItem = alertsData.find(item => item.id === id);
+  if (!alarmItem) return;
+  alarmItem.state = state;
+  renderAlerts();
+  renderAlarmDetail(alarmItem);
+  renderEvidence({ type: 'alarm', id });
+  updateOperationalCounts();
+  updateStats();
+}
+
+function focusAlarmOnMap(alarmItem) {
+  document.querySelectorAll('.zone.workbench-focus').forEach(zone => zone.classList.remove('workbench-focus'));
+  const zone = document.getElementById(`zone${alarmItem.zoneId}`);
+  if (zone) zone.classList.add('workbench-focus');
+}
+
+function renderEvidence(context = activeWorkbenchContext) {
+  const container = document.getElementById('evidenceContent');
+  if (!container) return;
+  let title = '全厂运行证据';
+  let cards = [];
+
+  if (context.type === 'alarm') {
+    const alarmItem = alertsData.find(item => item.id === context.id);
+    if (alarmItem) {
+      title = `${alarmItem.title} · 关联证据`;
+      cards = [
+        ['传感器读数', alarmItem.reading || '待复核', alarmItem.source || '关联数据源'],
+        ['设备状态', alarmItem.equipment || '未关联设备', alarmItem.trend || '趋势稳定'],
+        ['现场人员', alarmItem.personnel || '无人员关联', alarmItem.zone || '厂区'],
+        ['处置状态', getAlarmStateLabel(alarmItem.state), `更新于 ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}`],
+      ];
+    }
+  } else if (context.type === 'zone') {
+    const zoneSensors = sensorsData.filter(item => item.zone === context.name);
+    const zoneEquipment = equipmentData.filter(item => item.zone === context.name);
+    title = `${context.name} · 区域态势`;
+    cards = [
+      ['关联传感器', `${zoneSensors.length} 个`, `${zoneSensors.filter(item => item.status !== 'online').length} 个异常`],
+      ['区域设备', `${zoneEquipment.length} 台`, `${zoneEquipment.filter(item => item.status === 'online').length} 台在线`],
+      ['现场人员', `${personnelData.filter(item => item.zone === context.name).length} 人`, '定位数据已同步'],
+      ['区域告警', `${alertsData.filter(item => item.zone === context.name && item.state !== 'resolved').length} 条`, '未解除告警'],
+    ];
+  } else {
+    const item = context.type === 'personnel' ? personnelData.find(entry => entry.id === context.id) : equipmentData.find(entry => entry.id === context.id);
+    title = `${item?.name || '当前对象'} · 运行上下文`;
+    cards = [
+      ['对象编号', item?.id || '-', context.type === 'personnel' ? item?.role : item?.type],
+      ['所在区域', item?.zone || '-', '定位数据已同步'],
+      ['当前状态', item?.status || '-', '状态持续监测'],
+      ['关联告警', `${alertsData.filter(alertItem => alertItem.zone === item?.zone && alertItem.state !== 'resolved').length} 条`, '区域未解除告警'],
+    ];
+  }
+
+  container.innerHTML = `
+    <div class="evidence-meta"><strong>${title}</strong><span>实时证据链</span></div>
+    <div class="evidence-grid">${cards.map(card => `<article class="evidence-card"><h4>${card[0]}</h4><div class="evidence-value">${card[1]}</div><div class="evidence-note">${card[2]}</div></article>`).join('')}</div>
+  `;
+}
+
+function selectWorkbenchContext(type, id, name) {
+  activeWorkbenchContext = { type, id, name };
+  document.querySelectorAll('.zone.workbench-focus').forEach(zone => zone.classList.remove('workbench-focus'));
+  if (type === 'zone') document.getElementById(`zone${id}`)?.classList.add('workbench-focus');
+  renderEvidence(activeWorkbenchContext);
+}
+
+function updateOperationalCounts() {
+  const activeAlarms = alertsData.filter(item => item.state !== 'resolved');
+  const headerCount = document.getElementById('headerAlarmCount');
+  if (headerCount) headerCount.textContent = activeAlarms.length;
+  const layerCounts = { personnel: personnelData.length, equipment: equipmentData.length, beacon: beaconData.length, zones: 8 };
+  Object.entries(layerCounts).forEach(([layer, count]) => {
+    const button = document.getElementById(`btn-${layer}`);
+    if (button) {
+      const label = button.textContent.replace(/\s*\d+\s*$/, '').trim();
+      button.innerHTML = `${label}<span class="ops-count">${count}</span>`;
+    }
+  });
+}
+
+function toggleAlarmRail() {
+  document.getElementById('alarmRail')?.classList.toggle('open');
 }
 
 function sendAlertToAI(alertElement) {
@@ -2936,8 +3465,8 @@ function sendAlertToAI(alertElement) {
 function updateStats() {
   document.getElementById('statPersonnel').textContent = personnelData.length;
   document.getElementById('statEquipment').textContent = equipmentData.length;
-  document.getElementById('statWarnings').textContent = alertsData.filter(a => a.level === 'warning').length;
-  document.getElementById('statAlerts').textContent = alertsData.filter(a => a.level === 'danger').length;
+  document.getElementById('statWarnings').textContent = alertsData.filter(a => a.level === 'warning' && a.state !== 'resolved').length;
+  document.getElementById('statAlerts').textContent = alertsData.filter(a => a.level === 'danger' && a.state !== 'resolved').length;
 }
 
 function updateTime() {
@@ -3042,17 +3571,15 @@ function toggleLayer(layer) {
 }
 
 function selectZone(zoneId, zoneName) {
-  alert('已选择区域: ' + zoneName);
+  selectWorkbenchContext('zone', zoneId, zoneName);
 }
 
 function selectPersonnel(id) {
-  const p = personnelData.find(x => x.id === id);
-  alert('人员详情: ' + p.name + ' - ' + p.role);
+  selectWorkbenchContext('personnel', id);
 }
 
 function selectEquipment(id) {
-  const e = equipmentData.find(x => x.id === id);
-  alert('设备详情: ' + e.name + ' - ' + e.type);
+  selectWorkbenchContext('equipment', id);
 }
 
 function switchSensorTab(event, tab) {
@@ -3229,6 +3756,10 @@ let socket = null;
 let isConnected = false;
 let aiAnalysisCallback = null;
 
+function replaceArrayContents(target, source, transform = item => item) {
+  target.splice(0, target.length, ...source.map(transform));
+}
+
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}`;
@@ -3277,11 +3808,11 @@ function connectWebSocket() {
   
   socket.on('petrochemical_state', (state) => {
     console.log('Received petrochemical state:', state);
-    // 更新本地数据
-    if (state.personnel) personnelData = state.personnel;
-    if (state.equipment) equipmentData = state.equipment;
-    if (state.sensors) sensorsData = state.sensors;
-    if (state.alerts) alertsData = state.alerts;
+    // Keep the shared array references stable for renderers and workbench state.
+    if (state.personnel) replaceArrayContents(personnelData, state.personnel);
+    if (state.equipment) replaceArrayContents(equipmentData, state.equipment);
+    if (state.sensors) replaceArrayContents(sensorsData, state.sensors);
+    if (state.alerts) replaceArrayContents(alertsData, state.alerts, item => ({ ...alarmOperationalMeta[item.id], ...item }));
     
     // 重新渲染
     renderPersonnel();
@@ -3289,6 +3820,8 @@ function connectWebSocket() {
     renderSensors();
     renderAlerts();
     updateStats();
+    updateOperationalCounts();
+    renderEvidence(activeWorkbenchContext);
   });
   
   socket.on('update_ack', (data) => {
@@ -3297,9 +3830,10 @@ function connectWebSocket() {
 }
 
 function updateConnectionStatus(connected) {
-  const statusBadge = document.querySelector('.status-badge');
-  const statusText = statusBadge.querySelector('.status-text');
-  const statusDot = statusBadge.querySelector('.status-dot');
+  const statusText = document.getElementById('connectionStatus');
+  const statusBadge = statusText?.closest('.status-badge');
+  const statusDot = statusBadge?.querySelector('.status-dot');
+  if (!statusBadge || !statusText || !statusDot) return;
   
   if (connected) {
     statusBadge.style.background = 'rgba(34, 197, 94, 0.1)';
